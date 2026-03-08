@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useWishlistStore, type WishlistFolder, type WishlistItem } from '../store/wishlistStore';
 import { useCartStore } from '../store/cartStore';
 import { formatPrice } from '../lib/utils';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 import { StarRating } from '../components/ui/StarRating';
 import toast from 'react-hot-toast';
 

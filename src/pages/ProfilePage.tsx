@@ -6,7 +6,7 @@ import { formatPrice } from '../lib/utils';
 import { SEOHead } from '../components/seo/SEOHead';
 import { Package, Calendar, Loader2, User as UserIcon, ArrowLeft, XCircle, Edit2, Save, X } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/Input';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -190,7 +190,7 @@ export const ProfilePage = () => {
                   {(order.status === 'PAID' || order.status === 'PENDING') && (
                     <div className="mt-4 pt-4 border-t border-border flex justify-end">
                       <Button 
-                        variant="danger" 
+                        variant="destructive" 
                         size="sm" 
                         onClick={() => handleCancelOrder(order.id)}
                         className="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30"

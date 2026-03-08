@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { motion, useScroll, useTransform, useSpring, MotionValue } from 'framer-motion';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 import { InteractiveHoverButton } from '../components/ui/InteractiveHoverButton';
 import { HomeFeaturedSkeleton } from '../components/ui/Skeleton';
 import { ProductCard } from '../components/products/ProductCard';
@@ -174,7 +174,7 @@ export const HomePage = () => {
       </section>
 
       {/* ── FEATURED PRODUCTS ── */}
-      <section className="relative z-20 w-full flex flex-col justify-center bg-slate-50 dark:bg-slate-950 transition-colors duration-300 py-16 md:py-24 border-t border-border/5">
+      <section className="relative z-20 w-full flex flex-col justify-center bg-slate-50 dark:bg-slate-950 transition-colors duration-300 pt-16 md:pt-24 pb-8 md:pb-12 border-t border-border/5">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between mb-10">
           <div>

@@ -4,7 +4,7 @@ import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { formatPrice } from '../lib/utils';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/Input';
 import { CreditCard, Lock, ShieldCheck, Loader2 } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';

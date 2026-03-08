@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { api } from '../lib/api';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/Input';
 import { Plus, Trash2, Database, Loader2, RefreshCw, Edit, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -118,7 +118,7 @@ export const AdminPage = () => {
             Reset & Seed 140+ Items
             </Button>
             
-            <Button onClick={handleResetDatabase} disabled={seeding || clearing} variant="danger" className="bg-red-100 text-red-700 hover:bg-red-200 border-red-200">
+            <Button onClick={handleResetDatabase} disabled={seeding || clearing} variant="destructive" className="bg-red-100 text-red-700 hover:bg-red-200 border-red-200">
             {clearing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Clear Database
             </Button>

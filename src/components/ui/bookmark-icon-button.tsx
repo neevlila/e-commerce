@@ -3,7 +3,7 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart } from "lucide-react";
-import { Button } from "./Button";
+import { Button } from "./button";
 
 const animations = {
   icon: {

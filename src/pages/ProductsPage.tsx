@@ -5,7 +5,7 @@ import { Product } from '../types';
 import { ProductCard } from '../components/products/ProductCard';
 import { ProductsSkeletonGrid } from '../components/ui/Skeleton';
 import { Filter, X } from 'lucide-react';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const ProductsPage = () => {

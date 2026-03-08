@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Input } from '../components/ui/Input';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 import { GradientButton } from '../components/ui/GradientButton';
 import { BackButton } from '../components/ui/button-7';
 import { supabase } from '../lib/supabase';
