@@ -61,7 +61,14 @@ export const CartPage = () => {
                       <Link to={`/products/${item.id}`} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                         <h3 className="font-semibold text-foreground">{item.name}</h3>
                       </Link>
-                      <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mt-0.5">{item.category}</p>
+                      <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mt-0.5 flex items-center gap-2">
+                        {item.category}
+                        {item.size && (
+                          <span className="text-muted-foreground text-xs font-semibold px-1.5 py-0.5 rounded bg-muted/50 border border-border">
+                            Size: {item.size}
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <p className="font-bold text-foreground text-lg">{formatPrice(item.price * item.quantity)}</p>
                   </div>

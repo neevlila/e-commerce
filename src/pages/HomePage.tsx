@@ -12,8 +12,8 @@ import { SEOHead } from '../components/seo/SEOHead';
 
 // --- Parallax Hero wrapper ---
 function useHeroParallax(scrollY: MotionValue<number>) {
-  const y       = useTransform(scrollY, [0, 700], [0, -140]);
-  const scale   = useTransform(scrollY, [0, 700], [1, 0.94]);
+  const y = useTransform(scrollY, [0, 700], [0, -140]);
+  const scale = useTransform(scrollY, [0, 700], [1, 0.94]);
   const opacity = useTransform(scrollY, [0, 500], [1, 0]);
   const rotateX = useTransform(scrollY, [0, 700], [0, 10]);
   return { y, scale, opacity, rotateX };
@@ -44,7 +44,7 @@ export const HomePage = () => {
 
   return (
     <div className="flex flex-col relative w-full bg-background">
-      <SEOHead title="NovaStore - Premium E-Commerce" />
+      <SEOHead title="StyleHub - Premium E-Commerce" />
 
       {/* ── HERO — parallax push-away on scroll ── */}
       <motion.section
@@ -85,7 +85,7 @@ export const HomePage = () => {
               className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-200 dark:text-gray-300 mb-8 sm:mb-12 max-w-2xl sm:max-w-3xl mx-auto leading-relaxed font-light px-2"
             >
               Curated collections of premium electronics, fashion, and lifestyle
-              essentials. Elevate your everyday with NovaStore.
+              essentials. Elevate your everyday with StyleHub.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -177,42 +177,42 @@ export const HomePage = () => {
       <section className="relative z-20 w-full flex flex-col justify-center bg-slate-50 dark:bg-slate-950 transition-colors duration-300 pt-16 md:pt-24 pb-8 md:pb-12 border-t border-border/5">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between mb-10">
-          <div>
-            <h2 className="text-3xl font-bold mb-2 text-foreground">Trending Now</h2>
-            <p className="text-muted-foreground">Top rated products by our community</p>
+            <div>
+              <h2 className="text-3xl font-bold mb-2 text-foreground">Trending Now</h2>
+              <p className="text-muted-foreground">Top rated products by our community</p>
+            </div>
+            <Link
+              to="/products"
+              className="hidden md:flex items-center text-blue-600 hover:text-blue-700 font-medium"
+            >
+              View all <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
           </div>
-          <Link
-            to="/products"
-            className="hidden md:flex items-center text-blue-600 hover:text-blue-700 font-medium"
-          >
-            View all <ArrowRight className="ml-1 h-4 w-4" />
-          </Link>
-        </div>
 
-        {loading ? (
-          <HomeFeaturedSkeleton count={8} />
-        ) : featuredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
-            {featuredProducts.map((product, idx) => (
-              <motion.div
-                key={product.id}
-                className={idx >= 6 ? 'hidden sm:block' : ''}
-                initial={{ opacity: 0, y: 40, rotateX: 20, z: -60 }}
-                whileInView={{ opacity: 1, y: 0, rotateX: 0, z: 0 }}
-                viewport={{ once: false, margin: '-5%' }}
-                transition={{ delay: idx * 0.06, duration: 0.55, ease: 'easeOut' }}
-                style={{ transformPerspective: 900 }}
-                whileHover={{ y: -6, scale: 1.03, rotateX: -4 }}
-              >
-                <ProductCard product={product} />
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-gray-50 dark:bg-slate-800 rounded-xl">
-            <p className="text-muted-foreground">No products available. Check back soon!</p>
-          </div>
-        )}
+          {loading ? (
+            <HomeFeaturedSkeleton count={8} />
+          ) : featuredProducts.length > 0 ? (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
+              {featuredProducts.map((product, idx) => (
+                <motion.div
+                  key={product.id}
+                  className={idx >= 6 ? 'hidden sm:block' : ''}
+                  initial={{ opacity: 0, y: 40, rotateX: 20, z: -60 }}
+                  whileInView={{ opacity: 1, y: 0, rotateX: 0, z: 0 }}
+                  viewport={{ once: false, margin: '-5%' }}
+                  transition={{ delay: idx * 0.06, duration: 0.55, ease: 'easeOut' }}
+                  style={{ transformPerspective: 900 }}
+                  whileHover={{ y: -6, scale: 1.03, rotateX: -4 }}
+                >
+                  <ProductCard product={product} />
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-gray-50 dark:bg-slate-800 rounded-xl">
+              <p className="text-muted-foreground">No products available. Check back soon!</p>
+            </div>
+          )}
         </div>
       </section>
     </div>

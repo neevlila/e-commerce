@@ -9,18 +9,18 @@ interface SEOHeadProps {
 }
 
 export const SEOHead: React.FC<SEOHeadProps> = ({
-  title = 'Nova 3D - Premium Electronics & Gear',
+  title = 'StyleHub - Premium Electronics & Gear',
   description = 'Upgrade your workspace with our premium selection of electronics, wireless headphones, ergonomic office gear, and smart wearables.',
   image = 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=1200&q=80',
   url = window.location.href,
 }) => {
-  const siteTitle = title === 'Nova 3D - Premium Electronics & Gear' ? title : `${title} | Nova 3D`;
+  const siteTitle = title === 'StyleHub - Premium Electronics & Gear' ? title : `${title} | StyleHub`;
 
   return (
     <Helmet>
       <title>{siteTitle}</title>
       <meta name="description" content={description} />
-      
+
       {/* Open Graph / Facebook */}
       <meta property="og:type" content="website" />
       <meta property="og:url" content={url} />

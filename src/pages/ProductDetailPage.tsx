@@ -7,7 +7,7 @@ import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useWishlistStore } from '../store/wishlistStore';
 import { formatPrice } from '../lib/utils';
-import { ShoppingCart, Check, Loader2, ArrowLeft, Shield, Truck, MessageSquare, Heart, FolderOpen } from 'lucide-react';
+import { ShoppingCart, Check, Loader2, ArrowLeft, Shield, Truck, MessageSquare, Heart, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SEOHead } from '../components/seo/SEOHead';
 import { ProductCard } from '../components/products/ProductCard';
 import { StarRating } from '../components/ui/StarRating';
@@ -98,6 +98,11 @@ export const ProductDetailPage = () => {
   const { isWishlisted, addItem: addToWishlist, removeItem: removeFromWishlist } = useWishlistStore();
   const wishlisted = product ? isWishlisted(product.id) : false;
   const [showWishlistPicker, setShowWishlistPicker] = useState(false);
+  const [selectedSize, setSelectedSize] = useState<string>('');
+  
+  const isClothing = product ? ['clothing', 'clothes', 'apparel', 'fashion'].includes(product.category.toLowerCase()) : false;
+  const isShoes = product ? ['shoes'].includes(product.category.toLowerCase()) : false;
+  const requiresSize = isClothing || isShoes;
 
   // Review Form State
   const [rating, setRating] = useState(0);
@@ -114,11 +119,26 @@ export const ProductDetailPage = () => {
 
         if (currentProduct) {
           const allProducts = await api.products.list();
-          setRelatedProducts(
-            allProducts
-              .filter(p => p.category === currentProduct.category && p.id !== currentProduct.id)
-              .slice(0, 4)
-          );
+          let related = allProducts.filter(p => p.id !== currentProduct.id);
+          
+          if (currentProduct.category === 'Shoes') {
+             // If viewing shoes, ONLY suggest other shoes (matching the same gender if possible)
+             let shoeSuggestions = related.filter(p => p.category === 'Shoes');
+             if (currentProduct.subCategory) {
+                 shoeSuggestions = shoeSuggestions.filter(p => p.subCategory === currentProduct.subCategory);
+             }
+             related = shoeSuggestions.sort(() => 0.5 - Math.random());
+          } else if (currentProduct.category === 'Clothes') {
+             // For clothes, strictly suggest other clothes of the exact same gender (shirts, pants, etc. for that gender)
+             related = related.filter(p => p.category === 'Clothes' && p.subCategory === currentProduct.subCategory);
+             related = related.sort(() => 0.5 - Math.random());
+          } else {
+             // For Electronics, Home, Jewelry, Sports, etc. suggest from exact same category
+             related = related.filter(p => p.category === currentProduct.category);
+             related = related.sort(() => 0.5 - Math.random());
+          }
+          
+          setRelatedProducts(related.slice(0, 15));
           
           const productReviews = await api.reviews.list(id);
           setReviews(productReviews);
@@ -159,19 +179,27 @@ export const ProductDetailPage = () => {
 
   const handleAddToCart = () => {
     if (product) {
-      addItem(product);
+      if (requiresSize && !selectedSize) {
+        toast.error('Please select a size');
+        return;
+      }
+      addItem({ ...product, size: requiresSize ? selectedSize : undefined } as any);
       toast.success('Added to cart');
     }
   };
 
   const handleBuyNow = () => {
     if (!product) return;
+    if (requiresSize && !selectedSize) {
+      toast.error('Please select a size');
+      return;
+    }
     if (!user) {
       toast.error('Please login to purchase');
       navigate('/login', { state: { from: location } });
       return;
     }
-    navigate('/checkout', { state: { directCheckout: { ...product, quantity: 1 } } });
+    navigate('/checkout', { state: { directCheckout: { ...product, quantity: 1, size: requiresSize ? selectedSize : undefined } } });
   };
 
   const handleSubmitReview = async (e: React.FormEvent) => {
@@ -215,7 +243,43 @@ export const ProductDetailPage = () => {
     }
   };
 
-  if (loading) return <div className="flex h-[50vh] justify-center items-center"><Loader2 className="animate-spin text-blue-600" /></div>;
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 animate-pulse">
+        <div className="h-10 w-24 bg-gray-200 dark:bg-slate-700 rounded-lg mb-6"></div>
+        <div className="grid md:grid-cols-2 gap-12 mb-16">
+          <div className="bg-gray-200 dark:bg-slate-700 rounded-2xl aspect-square w-full"></div>
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-slate-800/50 p-6 rounded-2xl border border-border/60 shadow-sm flex flex-col space-y-6">
+              <div>
+                <div className="h-4 w-20 bg-gray-300 dark:bg-slate-600 rounded mb-4"></div>
+                <div className="h-8 w-3/4 bg-gray-300 dark:bg-slate-600 rounded mb-4"></div>
+                <div className="h-4 w-32 bg-gray-200 dark:bg-slate-700 rounded"></div>
+              </div>
+              <div className="pt-4 border-t border-border/40">
+                <div className="h-12 w-40 bg-gray-300 dark:bg-slate-600 rounded mb-2"></div>
+                <div className="h-4 w-32 bg-gray-200 dark:bg-slate-700 rounded"></div>
+              </div>
+              <div className="pt-2 flex flex-col sm:flex-row gap-4">
+                <div className="h-14 flex-1 bg-gray-300 dark:bg-slate-600 rounded-lg"></div>
+                <div className="h-14 flex-1 bg-gray-300 dark:bg-slate-600 rounded-lg"></div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="h-4 w-full bg-gray-200 dark:bg-slate-700 rounded"></div>
+              <div className="h-4 w-full bg-gray-200 dark:bg-slate-700 rounded"></div>
+              <div className="h-4 w-2/3 bg-gray-200 dark:bg-slate-700 rounded"></div>
+            </div>
+            <div className="flex flex-col gap-4 py-6 border-y border-border">
+              <div className="h-6 w-1/3 bg-gray-200 dark:bg-slate-700 rounded"></div>
+              <div className="h-6 w-1/2 bg-gray-200 dark:bg-slate-700 rounded"></div>
+              <div className="h-6 w-2/5 bg-gray-200 dark:bg-slate-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (!product) return <div className="container mx-auto px-4 py-8">Product not found</div>;
 
   return (
@@ -241,44 +305,71 @@ export const ProductDetailPage = () => {
           </div>
         </div>
 
-        <div className="space-y-8">
-          <div>
-            <span className="text-blue-600 dark:text-blue-400 font-medium text-sm tracking-wide uppercase">{product.category}</span>
-            <h1 className="text-4xl font-bold text-foreground mt-2 leading-tight">{product.name}</h1>
-            <div className="flex items-center gap-2 mt-3">
-                <StarRating rating={product.rating || 0} size={20} />
-                <span className="text-muted-foreground text-sm">({reviews.length} reviews)</span>
+        <div className="space-y-8 flex flex-col h-full">
+          {/* Gestalt Principle: Law of Proximity (Buy Box) */}
+          <div className="bg-white dark:bg-slate-800/50 p-6 rounded-2xl border border-border/60 shadow-sm flex flex-col space-y-6">
+            <div>
+              <span className="text-blue-600 dark:text-blue-400 font-semibold text-xs tracking-widest uppercase">{product.category}</span>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground mt-2 leading-tight">{product.name}</h1>
+              <div className="flex items-center gap-3 mt-4">
+                  <StarRating rating={product.rating || 0} size={18} />
+                  <span className="text-muted-foreground text-sm font-medium">({Math.max(product.reviewCount || 0, reviews.length)} customer reviews)</span>
+              </div>
+            </div>
+            
+            <div className="flex items-end gap-3 pt-4 border-t border-border/40">
+              <p className="text-5xl font-black text-foreground tracking-tight">{formatPrice(product.price)}</p>
+              <span className="text-sm text-muted-foreground mb-2">Inclusive of all taxes</span>
+            </div>
+
+            {requiresSize && (
+              <div className="pt-2">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-semibold text-sm">Select Size</span>
+                  <button className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline">Size Guide</button>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {(isShoes ? ['6', '7', '8', '9', '10', '11', '12'] : ['S', 'M', 'L', 'XL', 'XXL']).map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      className={`h-12 min-w-[3rem] px-4 rounded-xl border border-border flex items-center justify-center text-sm font-semibold transition-all ${
+                        selectedSize === size
+                          ? 'bg-foreground text-background border-foreground shadow-md scale-105'
+                          : 'bg-background hover:border-foreground/50 text-foreground'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div className="pt-2 flex flex-col sm:flex-row gap-4">
+              <Button size="lg" className=" h-16 w-full sm:h-14 text-[17px] sm:text-base font-semibold shadow-lg shadow-blue-600/20 hover:-translate-y-0.5 transition-transform" onClick={handleAddToCart}>
+                <ShoppingCart className="mr-2 h-5 w-5 sm:h-6 sm:w-6" /> Add to Cart
+              </Button>
+              <Button size="lg" className=" h-16 w-full sm:h-14 text-[17px] sm:text-base font-semibold bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white shadow-lg shadow-pink-500/20 hover:-translate-y-0.5 transition-transform" onClick={handleBuyNow}>
+                Buy Now
+              </Button>
             </div>
           </div>
-          
-          <div className="flex items-baseline gap-4">
-            <p className="text-4xl font-bold text-foreground">{formatPrice(product.price)}</p>
-            <span className="text-sm text-muted-foreground">Inclusive of all taxes</span>
-          </div>
-          
-          <div className="prose dark:prose-invert text-muted-foreground leading-relaxed">
+
+          <div className="prose dark:prose-invert max-w-none text-muted-foreground leading-relaxed text-base">
             <p>{product.description}</p>
           </div>
 
-          <div className="flex flex-col gap-3 py-6 border-y border-border">
-            <div className="flex items-center text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400 w-fit px-3 py-1 rounded-full text-sm font-medium">
+          <div className="flex flex-col gap-4 py-6 border-y border-border">
+            <div className="flex items-center text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400 w-fit px-4 py-2 rounded-lg text-sm font-semibold border border-green-200 dark:border-green-800/30">
               <Check className="h-4 w-4 mr-2" /> In Stock ({product.stock} units)
             </div>
-            <div className="flex items-center text-muted-foreground text-sm">
-              <Truck className="h-4 w-4 mr-2" /> Free Delivery by {new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+            <div className="flex items-center text-muted-foreground text-sm font-medium">
+              <Truck className="h-5 w-5 mr-3 text-blue-500" /> Free Delivery by {new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()}
             </div>
-            <div className="flex items-center text-muted-foreground text-sm">
-              <Shield className="h-4 w-4 mr-2" /> 1 Year Warranty Included
+            <div className="flex items-center text-muted-foreground text-sm font-medium">
+              <Shield className="h-5 w-5 mr-3 text-blue-500" /> 1 Year Warranty Included
             </div>
-          </div>
-
-          <div className="pt-2 flex flex-col sm:flex-row gap-3">
-            <Button size="lg" className="w-full sm:w-auto min-w-[200px] h-14 text-lg shadow-lg shadow-blue-600/20" onClick={handleAddToCart}>
-              <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart
-            </Button>
-            <Button size="lg" className="w-full sm:w-auto min-w-[200px] h-14 text-lg bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white shadow-lg shadow-pink-500/20" onClick={handleBuyNow}>
-              Buy Now
-            </Button>
           </div>
         </div>
       </div>
@@ -353,8 +444,40 @@ export const ProductDetailPage = () => {
       {relatedProducts.length > 0 && (
         <section className="border-t border-border pt-12">
             <h2 className="text-2xl font-bold mb-6">Similar Products</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {relatedProducts.map(p => <ProductCard key={p.id} product={p} />)}
+            <div className="relative group">
+               <button 
+                  onClick={() => {
+                     document.getElementById('similar-products-scroll')?.scrollBy({ left: -320, behavior: 'smooth' });
+                  }}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 hidden group-hover:flex bg-white dark:bg-slate-800 shadow-xl border border-border rounded-full p-2 h-12 w-12 text-foreground items-center justify-center -ml-4 sm:-ml-6 hover:scale-105 transition-transform"
+               >
+                 <ChevronLeft className="h-6 w-6" />
+               </button>
+
+               <div 
+                  id="similar-products-scroll" 
+                  className="flex overflow-x-auto gap-6 pb-6 px-2 scroll-smooth snap-x snap-mandatory" 
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+               >
+                 {/* Webkit scrollbar hiding injected via tailwind utilities or inline style won't perfectly work for webkit without a tag, 
+                     but standard scrollbarWidth: none works in Firefox. To ensure neatness, tailwind plugins usually provide hide-scrollbar. */}
+                 <style dangerouslySetInnerHTML={{__html: `\n#similar-products-scroll::-webkit-scrollbar { display: none; }\n`}} />
+                 
+                 {relatedProducts.map(p => (
+                    <div key={p.id} className="w-[280px] sm:w-[320px] shrink-0 snap-start">
+                       <ProductCard product={p} />
+                    </div>
+                 ))}
+               </div>
+
+               <button 
+                  onClick={() => {
+                     document.getElementById('similar-products-scroll')?.scrollBy({ left: 320, behavior: 'smooth' });
+                  }}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 hidden group-hover:flex bg-white dark:bg-slate-800 shadow-xl border border-border rounded-full p-2 h-12 w-12 text-foreground items-center justify-center -mr-4 sm:-mr-6 hover:scale-105 transition-transform"
+               >
+                 <ChevronRight className="h-6 w-6" />
+               </button>
             </div>
         </section>
       )}

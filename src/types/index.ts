@@ -25,6 +25,7 @@ export interface Product {
   imageUrl: string;
   category: string;
   subCategory?: string; // Added for Clothes filtering
+  company: string; // Brand / Company name
   stock: number;
   createdAt: string;
   rating?: number;
@@ -33,6 +34,7 @@ export interface Product {
 
 export interface CartItem extends Product {
   quantity: number;
+  size?: string;
 }
 
 export interface Order {

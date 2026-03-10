@@ -6,8 +6,7 @@ import { api } from '../lib/api';
 import { formatPrice } from '../lib/utils';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/Input';
-import { CreditCard, Lock, ShieldCheck, Loader2 } from 'lucide-react';
-import { loadStripe } from '@stripe/stripe-js';
+import { Lock, ShieldCheck, Loader2 } from 'lucide-react';
 import {
   Elements,
   CardElement,
@@ -290,7 +289,15 @@ export const CheckoutPage = () => {
                       <span className="text-foreground">{item.name}</span>
                       <span className="text-foreground">{formatPrice(item.price * item.quantity)}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                    <p className="text-sm text-muted-foreground flex items-center gap-3">
+                      <span>Qty: {item.quantity}</span>
+                      {item.size && (
+                        <>
+                          <span className="w-1 h-1 rounded-full bg-muted-foreground/50"></span>
+                          <span>Size: <span className="font-semibold text-foreground">{item.size}</span></span>
+                        </>
+                      )}
+                    </p>
                   </div>
                 </div>
               ))}

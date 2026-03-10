@@ -10,7 +10,6 @@ interface ThemeToggleProps {
 export function ThemeToggle({ className }: ThemeToggleProps) {
   const { theme, toggleTheme } = useThemeStore()
   const isDark = theme === "dark"
-
   return (
     <div
       className={cn(

@@ -289,10 +289,10 @@ export const WishlistPage = () => {
       </div>
 
       {/* Two-column layout: sidebar + grid */}
-      <div className="flex gap-6">
+      <div className="flex flex-col md:flex-row gap-6">
 
         {/* ── Folder Sidebar ────────────────────────────────────────────── */}
-        <aside className="w-56 flex-shrink-0 space-y-1">
+        <aside className="w-full md:w-56 flex-shrink-0 space-y-1 md:sticky md:top-24">
           {/* All items */}
           <button
             onClick={() => setActiveFolder(null)}

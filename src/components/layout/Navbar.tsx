@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, LogOut, Loader2, Search, Menu, X, ShoppingBag, Home, Package2, LayoutDashboard, Heart } from 'lucide-react';
+import { ShoppingCart, User, LogOut, Loader2, Search, Menu, X, ShoppingBag, Home, Package2, LayoutDashboard, Heart, MessageCircle, Send } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 import { useWishlistStore } from '../../store/wishlistStore';
@@ -18,7 +18,7 @@ export const Navbar = () => {
   const { user, isAuthenticated, logout, isLoading } = useAuthStore();
   const cartItems = useCartStore((state) => state.items);
   const wishlistItems = useWishlistStore((state) => state.items);
-  
+
   const totalCartItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const navigate = useNavigate();
@@ -31,15 +31,17 @@ export const Navbar = () => {
   const getActiveTab = () => {
     if (location.pathname === '/') return 'Home';
     if (location.pathname.startsWith('/products')) return 'Shop';
+    if (location.pathname.startsWith('/support')) return 'Support';
+    if (location.pathname.startsWith('/contact')) return 'Contact';
     if (location.pathname.startsWith('/admin')) return 'Admin';
-    return 'Home';
+    return '';
   };
   const [activeTab, setActiveTab] = useState(getActiveTab());
 
   useEffect(() => {
     setActiveTab(getActiveTab());
   }, [location.pathname]);
-  
+
   // Scroll State for styling
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -50,38 +52,38 @@ export const Navbar = () => {
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-      api.products.list().then(setAllProducts);
+    api.products.list().then(setAllProducts);
 
-      const handleScroll = () => {
-        setIsScrolled(window.scrollY > 10);
-      };
-      window.addEventListener('scroll', handleScroll);
-      return () => window.removeEventListener('scroll', handleScroll);
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-          if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-              setShowSuggestions(false);
-          }
-      };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-      if (searchQuery.trim().length > 1) {
-          const lowerQuery = searchQuery.toLowerCase();
-          const matches = allProducts.filter(p => 
-              p.name.toLowerCase().includes(lowerQuery) || 
-              p.category.toLowerCase().includes(lowerQuery)
-          ).slice(0, 5);
-          setSuggestions(matches);
-          setShowSuggestions(true);
-      } else {
-          setSuggestions([]);
-          setShowSuggestions(false);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
       }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim().length > 1) {
+      const lowerQuery = searchQuery.toLowerCase();
+      const matches = allProducts.filter(p =>
+        p.name.toLowerCase().includes(lowerQuery) ||
+        p.category.toLowerCase().includes(lowerQuery)
+      ).slice(0, 5);
+      setSuggestions(matches);
+      setShowSuggestions(true);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
   }, [searchQuery, allProducts]);
 
   const handleLogout = async () => {
@@ -101,19 +103,18 @@ export const Navbar = () => {
   };
 
   const handleSuggestionClick = (product: Product) => {
-      navigate(`/products/${product.id}`);
-      setSearchQuery('');
-      setShowSuggestions(false);
-      setShowMobileSearch(false);
+    navigate(`/products/${product.id}`);
+    setSearchQuery('');
+    setShowSuggestions(false);
+    setShowMobileSearch(false);
   };
 
   return (
-    <nav 
-      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        isScrolled 
-          ? 'bg-white dark:bg-slate-900 shadow-md border-b border-border' 
+    <nav
+      className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled
+          ? 'bg-white dark:bg-slate-900 shadow-md border-b border-border'
           : 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-border/50'
-      }`}
+        }`}
     >
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-2 md:gap-4">
         {/* Logo */}
@@ -122,10 +123,10 @@ export const Navbar = () => {
             <ShoppingBag className="h-5 w-5" />
           </div>
           <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 hidden sm:block tracking-tight">
-            Nova 3D
+            StyleHub
           </span>
           <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 sm:hidden">
-            Nova 3D
+            StyleHub
           </span>
         </Link>
 
@@ -133,12 +134,12 @@ export const Navbar = () => {
         <div className="flex-1 max-w-md hidden md:block relative group" ref={searchRef}>
           <form onSubmit={handleSearch}>
             <input
-                type="text"
-                placeholder="Search for products, brands and more"
-                className="w-full pl-10 pr-4 py-2 rounded-full border border-input bg-secondary/50 focus:bg-background focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => searchQuery.length > 1 && setShowSuggestions(true)}
+              type="text"
+              placeholder="Search for products, brands and more"
+              className="w-full pl-10 pr-4 py-2 rounded-full border border-input bg-secondary/50 focus:bg-background focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => searchQuery.length > 1 && setShowSuggestions(true)}
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-blue-500 transition-colors" />
           </form>
@@ -146,33 +147,33 @@ export const Navbar = () => {
           {/* Suggestions Dropdown */}
           <AnimatePresence>
             {showSuggestions && suggestions.length > 0 && (
-                <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full mt-2 w-full bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-border overflow-hidden z-50"
-                >
-                    <div className="py-2">
-                        <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            Suggestions
-                        </div>
-                        {suggestions.map(product => (
-                            <div 
-                                key={product.id}
-                                onClick={() => handleSuggestionClick(product)}
-                                className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer flex items-center gap-3 transition-colors"
-                            >
-                                <div className="h-8 w-8 rounded bg-gray-100 dark:bg-slate-700 overflow-hidden flex-shrink-0">
-                                    <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
-                                </div>
-                                <div className="flex flex-col overflow-hidden">
-                                    <span className="text-sm font-medium truncate text-foreground">{product.name}</span>
-                                    <span className="text-xs text-muted-foreground">in {product.category}</span>
-                                </div>
-                            </div>
-                        ))}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute top-full mt-2 w-full bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-border overflow-hidden z-50"
+              >
+                <div className="py-2">
+                  <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Suggestions
+                  </div>
+                  {suggestions.map(product => (
+                    <div
+                      key={product.id}
+                      onClick={() => handleSuggestionClick(product)}
+                      className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer flex items-center gap-3 transition-colors"
+                    >
+                      <div className="h-8 w-8 rounded bg-gray-100 dark:bg-slate-700 overflow-hidden flex-shrink-0">
+                        <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-sm font-medium truncate text-foreground">{product.name}</span>
+                        <span className="text-xs text-muted-foreground">in {product.category}</span>
+                      </div>
                     </div>
-                </motion.div>
+                  ))}
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
@@ -185,6 +186,8 @@ export const Navbar = () => {
             items={[
               { name: 'Home', url: '/', icon: Home, onClick: () => navigate('/') },
               { name: 'Shop', url: '/products', icon: Package2, onClick: () => navigate('/products') },
+              { name: 'Support', url: '/support', icon: MessageCircle, onClick: () => navigate('/support') },
+              { name: 'Contact', url: '/contact', icon: Send, onClick: () => navigate('/contact') },
               ...(isAuthenticated && user?.role === 'ADMIN'
                 ? [{ name: 'Admin', url: '/admin', icon: LayoutDashboard, onClick: () => navigate('/admin') }]
                 : []),

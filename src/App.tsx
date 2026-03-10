@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
@@ -16,6 +17,8 @@ import { FAQPage } from './pages/legal/FAQPage';
 import { PrivacyPage } from './pages/legal/PrivacyPage';
 import { TermsPage } from './pages/legal/TermsPage';
 import { WishlistPage } from './pages/WishlistPage';
+import { SupportPage } from './pages/SupportPage';
+import { ContactPage } from './pages/ContactPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { supabase } from './lib/supabase';
@@ -42,27 +45,27 @@ function App() {
 
   useEffect(() => {
     initialize();
-    
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         try {
           // Check for hardcoded admin email
           const isAdmin = session.user.email === 'ecommerce@gmail.com';
-          
+
           const profile = await api.auth.getProfile(session.user.id);
-          
+
           if (profile) {
             setUser({
-                ...profile,
-                role: isAdmin ? 'ADMIN' : profile.role
+              ...profile,
+              role: isAdmin ? 'ADMIN' : profile.role
             });
           } else {
-             setUser({
+            setUser({
               id: session.user.id,
               email: session.user.email!,
               name: session.user.user_metadata.full_name || 'User',
               role: isAdmin ? 'ADMIN' : 'USER'
-             });
+            });
           }
         } catch (error) {
           console.error("Error fetching profile:", error);
@@ -81,47 +84,51 @@ function App() {
       <div className="min-h-screen flex flex-col bg-background font-sans text-foreground transition-colors duration-300">
         <Navbar />
         <main className="flex-grow pt-16">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/products" element={<ProductsPage />} />
-            <Route path="/products/:id" element={<ProductDetailPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignUpPage />} />
-            
-            {/* Legal Routes */}
-            <Route path="/faq" element={<FAQPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/wishlist" element={<WishlistPage />} />
-            
-            <Route 
-              path="/profile" 
-              element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              } 
-            />
+          <AnimatePresence mode="wait">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/products" element={<ProductsPage />} />
+              <Route path="/products/:id" element={<ProductDetailPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignUpPage />} />
+              <Route path="/support" element={<SupportPage />} />
+              <Route path="/contact" element={<ContactPage />} />
 
-            <Route 
-              path="/checkout" 
-              element={
-                <ProtectedRoute>
-                  <CheckoutPage />
-                </ProtectedRoute>
-              } 
-            />
-            
-            <Route 
-              path="/admin" 
-              element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
-                  <AdminPage />
-                </ProtectedRoute>
-              } 
-            />
-          </Routes>
+              {/* Legal Routes */}
+              <Route path="/faq" element={<FAQPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/wishlist" element={<WishlistPage />} />
+
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/checkout"
+                element={
+                  <ProtectedRoute>
+                    <CheckoutPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminPage />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </AnimatePresence>
         </main>
         <Footer />
         <Toaster position="bottom-right" toastOptions={{

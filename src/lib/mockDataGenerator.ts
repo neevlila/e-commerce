@@ -56,20 +56,20 @@ export const generateProducts = (count: number = 140): Omit<Product, 'id' | 'cre
     const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
     const brand = BRANDS[Math.floor(Math.random() * BRANDS.length)];
     const noun = categoryObj.nouns[Math.floor(Math.random() * categoryObj.nouns.length)];
-    
+
     let subCategory: string | undefined = undefined;
     let name = `${brand} ${adjective} ${noun}`;
 
     // Handle Clothes Sub-categories
     if (categoryObj.name === 'Clothes') {
-        const subs = ['Men', 'Women', 'Child'];
-        subCategory = subs[Math.floor(Math.random() * subs.length)];
-        name = `${subCategory}'s ${brand} ${noun}`;
+      const subs = ['Men', 'Women', 'Child'];
+      subCategory = subs[Math.floor(Math.random() * subs.length)];
+      name = `${subCategory}'s ${brand} ${noun}`;
     }
 
     // Handle Smartwatch -> Electronics
     if (noun === 'Smartwatch') {
-        // Ensure it stays in Electronics, logic already handles it via categoryObj
+      // Ensure it stays in Electronics, logic already handles it via categoryObj
     }
 
     // Random price
@@ -84,6 +84,7 @@ export const generateProducts = (count: number = 140): Omit<Product, 'id' | 'cre
       imageUrl,
       category: categoryObj.name,
       subCategory,
+      company: brand,
       stock,
       rating: Number((Math.random() * 2 + 3).toFixed(1)),
       reviewCount: Math.floor(Math.random() * 50)
