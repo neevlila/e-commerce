@@ -18,7 +18,6 @@ export const ProductCard = ({ product }: { product: Product }) => {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     addItem(product);
-    toast.success('Added to cart');
   };
 
   const handleWishlist = () => {

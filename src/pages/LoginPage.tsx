@@ -54,7 +54,8 @@ export const LoginPage = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          // Redirect back to the page the user was on
+          redirectTo: `${window.location.origin}${from}`,
         },
       });
       if (error) throw error;
@@ -146,7 +147,15 @@ export const LoginPage = () => {
                 {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium text-foreground/80">Password</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium text-foreground/80">Password</label>
+                  <Link 
+                    to="/forgot-password" 
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}

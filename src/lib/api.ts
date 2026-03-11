@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Product, Order, User, Review } from '../types';
+import { Product, Order, User, Review, CartItem } from '../types';
 import { MOCK_PRODUCTS } from './mockData';
 
 // Helper to map DB snake_case to frontend camelCase
@@ -199,20 +199,165 @@ export const api = {
 
       // Try DB
       try {
-        if (!id.startsWith('mock-') && !id.startsWith('local-') && !id.startsWith('static-')) {
-          const dbPayload: any = {};
-          if (updates.price !== undefined) dbPayload.price = updates.price;
-          if (updates.name !== undefined) dbPayload.name = updates.name;
-          if (updates.rating !== undefined) dbPayload.rating = updates.rating;
-          if (updates.reviewCount !== undefined) dbPayload.review_count = updates.reviewCount;
+        const { data, error } = await supabase
+          .from('products')
+          .update({
+            name: updates.name,
+            description: updates.description,
+            price: updates.price,
+            image_url: updates.imageUrl,
+            category: updates.category,
+            company: updates.company,
+            stock: updates.stock
+          })
+          .eq('id', id)
+          .select()
+          .single();
 
-          await supabase.from('products').update(dbPayload).eq('id', id);
-        }
+        if (error) throw error;
+        return mapProduct(data);
       } catch (e) {
-        console.warn("Update DB failed, local only");
+        return updatedItem;
       }
-      return updatedItem;
     },
+
+    getRecommendations: async (cartItems: CartItem[]): Promise<Product[]> => {
+      const allProducts = getLocalProducts() || MOCK_PRODUCTS;
+      const cartProductIds = new Set(cartItems.map(item => item.id));
+
+      if (cartItems.length === 0) {
+        return allProducts
+          .sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0))
+          .slice(0, 8);
+      }
+
+      let recommended: Product[] = [];
+
+      for (const item of cartItems) {
+        const name = item.name.toLowerCase();
+        const cat = item.category.toLowerCase();
+        
+        // Pants -> Shirts, Shoes, Accessories (Jewelry)
+        if (name.includes('pant') || name.includes('chino') || name.includes('jeans') || name.includes('trousers') || name.includes('jogger')) {
+          const suggestions = allProducts.filter(p => {
+            const pName = p.name.toLowerCase();
+            const pCat = p.category.toLowerCase();
+            const pSub = p.subCategory?.toLowerCase();
+            const itemSub = item.subCategory?.toLowerCase();
+
+            // Must match gender if the item or suggestion is gendered
+            if (itemSub && pSub && itemSub !== pSub && (itemSub !== 'child' && pSub !== 'child')) return false;
+
+            return (pName.includes('shirt') || pName.includes('tee') || pCat === 'shoes' || pCat === 'jewelry') && !cartProductIds.has(p.id);
+          });
+          recommended.push(...suggestions);
+        }
+        
+        // Shirt -> Pants, Shoes
+        else if (name.includes('shirt') || name.includes('tee')) {
+          const suggestions = allProducts.filter(p => {
+            const pName = p.name.toLowerCase();
+            const pCat = p.category.toLowerCase();
+            const pSub = p.subCategory?.toLowerCase();
+            const itemSub = item.subCategory?.toLowerCase();
+
+            if (itemSub && pSub && itemSub !== pSub && (itemSub !== 'child' && pSub !== 'child')) return false;
+
+            return (pName.includes('pant') || pName.includes('chino') || pName.includes('jeans') || pCat === 'shoes') && !cartProductIds.has(p.id);
+          });
+          recommended.push(...suggestions);
+        }
+
+        // Jacket -> Pants, Shirts, Shoes
+        else if (name.includes('jacket')) {
+          const suggestions = allProducts.filter(p => {
+            const pName = p.name.toLowerCase();
+            const pCat = p.category.toLowerCase();
+            const pSub = p.subCategory?.toLowerCase();
+            const itemSub = item.subCategory?.toLowerCase();
+
+            if (itemSub && pSub && itemSub !== pSub && (itemSub !== 'child' && pSub !== 'child')) return false;
+
+            return (pName.includes('pant') || pName.includes('shirt') || pCat === 'shoes') && !cartProductIds.has(p.id);
+          });
+          recommended.push(...suggestions);
+        }
+
+        // Dress -> Shoes, Jewelry
+        else if (name.includes('dress')) {
+          const suggestions = allProducts.filter(p => {
+            const pCat = p.category.toLowerCase();
+            return (pCat === 'shoes' || pCat === 'jewelry') && !cartProductIds.has(p.id);
+          });
+          recommended.push(...suggestions);
+        }
+
+        // Electronics: same brand or related categories (keyboard, mouse, etc)
+        else if (cat === 'electronics') {
+          const suggestions = allProducts.filter(p => {
+            const pName = p.name.toLowerCase();
+            const pCat = p.category.toLowerCase();
+            // If it's tech, suggest other tech from same brand OR specific peripherals
+            const isRelatedTech = pCat === 'electronics' && (
+              p.company === item.company || 
+              pName.includes('keyboard') || 
+              pName.includes('mouse') || 
+              pName.includes('headphone') || 
+              pName.includes('monitor') ||
+              pName.includes('watch') ||
+              pName.includes('pad')
+            );
+            return isRelatedTech && p.id !== item.id && !cartProductIds.has(p.id);
+          });
+          recommended.push(...suggestions);
+        }
+      }
+
+      // Fallback: popular items or same categories (Fair Decision Rule: Filter out unrelated categories if tech is in cart)
+      if (recommended.length < 8) {
+        const cartCategories = new Set(cartItems.map(item => item.category));
+        const hasTech = cartItems.some(item => item.category === 'Electronics');
+        const hasSkinCare = cartItems.some(item => item.category === 'Skin Care');
+        
+        const extra = allProducts
+          .filter(p => {
+            if (cartProductIds.has(p.id)) return false;
+            if (recommended.some(r => r.id === p.id)) return false;
+            
+            // Fair Decision: If cart has tech, don't suggest unrelated things like jewelry or home stuff as fallback unless explicitly matching category
+            if (hasTech && !cartCategories.has(p.category)) {
+              if (p.category === 'Jewelry' || p.category === 'Home & Living' || p.category === 'Skin Care' || p.category === 'Sports') return false;
+            }
+            
+            // If cart has skin care, don't suggest tech or sports as fallback
+            if (hasSkinCare && !cartCategories.has(p.category)) {
+              if (p.category === 'Electronics' || p.category === 'Sports' || p.category === 'Home & Living') return false;
+            }
+
+            // General filter: don't suggest unrelated categories if we already have some category-specific recommendations
+            if (recommended.length > 0 && !cartCategories.has(p.category)) {
+               // Only suggest if it's high rated and not totally unrelated
+               if (p.rating && p.rating < 4.5) return false;
+            }
+
+            return true;
+          })
+          .sort((a, b) => {
+            if (cartCategories.has(a.category) && !cartCategories.has(b.category)) return -1;
+            if (!cartCategories.has(a.category) && cartCategories.has(b.category)) return 1;
+            return (b.reviewCount || 0) - (a.reviewCount || 0);
+          });
+        recommended.push(...extra);
+      }
+
+      // Remove duplicates and limit to 8
+      const uniqueRecommended = Array.from(new Map(recommended.map(p => [p.id, p])).values())
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+        .slice(0, 8);
+
+      return uniqueRecommended;
+    },
+
     delete: async (id: string): Promise<void> => {
       const current = getLocalProducts() || MOCK_PRODUCTS;
       setLocalProducts(current.filter(p => p.id !== id));

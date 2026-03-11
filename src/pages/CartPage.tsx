@@ -1,13 +1,26 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useCartStore } from '../store/cartStore';
 import { formatPrice } from '../lib/utils';
+import { api } from '../lib/api';
+import { Product } from '../types';
+import { ProductCard } from '../components/products/ProductCard';
 import { Button } from '../components/ui/button';
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const CartPage = () => {
   const { items, removeItem, updateQuantity, total } = useCartStore();
+  const [recommendations, setRecommendations] = useState<Product[]>([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      const recs = await api.products.getRecommendations(items);
+      setRecommendations(recs);
+    };
+    fetchRecommendations();
+  }, [items]);
 
   if (items.length === 0) {
     return (
@@ -35,7 +48,7 @@ export const CartPage = () => {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-foreground mb-8">Shopping Cart</h1>
 
-      <div className="grid lg:grid-cols-3 gap-8">
+      <div className="grid lg:grid-cols-3 gap-8 mb-16">
         {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
           <AnimatePresence mode="popLayout">
@@ -114,7 +127,7 @@ export const CartPage = () => {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="bg-card dark:bg-slate-800/60 border border-border dark:border-slate-700 p-6 rounded-2xl sticky top-24"
+            className="bg-card dark:bg-slate-800/60 border border-border dark:border-slate-700 p-6 rounded-2xl sticky top-24 shadow-sm"
           >
             <h2 className="text-lg font-bold text-foreground mb-5">Order Summary</h2>
             <div className="space-y-3 mb-5">
@@ -135,7 +148,7 @@ export const CartPage = () => {
               <span>Total</span>
               <span>{formatPrice(total() * 1.08)}</span>
             </div>
-            <Button className="w-full" size="lg" onClick={() => navigate('/checkout')}>
+            <Button className="w-full h-12 text-base font-semibold shadow-lg shadow-blue-600/20" size="lg" onClick={() => navigate('/checkout')}>
               Checkout <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Link to="/products" className="block text-center mt-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -144,6 +157,35 @@ export const CartPage = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Recommendations Section */}
+      {recommendations.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="border-t border-border dark:border-slate-700 pt-12"
+        >
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                <Sparkles className="h-6 w-6 text-blue-500" />
+                You Might Also Like
+              </h2>
+              <p className="text-muted-foreground mt-1 text-sm">Frequently bought together with your items</p>
+            </div>
+            <Link to="/products" className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium">
+              View all products
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {recommendations.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };

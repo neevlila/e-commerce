@@ -111,7 +111,6 @@ function WishlistCard({
     e.preventDefault();
     addToCart(product);
     removeItem(product.id);
-    toast.success('Moved to cart!');
   };
 
   const handleRemove = (e: React.MouseEvent) => {

@@ -19,7 +19,10 @@ import { TermsPage } from './pages/legal/TermsPage';
 import { WishlistPage } from './pages/WishlistPage';
 import { SupportPage } from './pages/SupportPage';
 import { ContactPage } from './pages/ContactPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { CartRecommendationModal } from './components/cart/CartRecommendationModal';
 import { useAuthStore } from './store/authStore';
 import { supabase } from './lib/supabase';
 import { api } from './lib/api';
@@ -92,6 +95,8 @@ function App() {
               <Route path="/cart" element={<CartPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignUpPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/support" element={<SupportPage />} />
               <Route path="/contact" element={<ContactPage />} />
 
@@ -130,6 +135,7 @@ function App() {
             </Routes>
           </AnimatePresence>
         </main>
+        <CartRecommendationModal />
         <Footer />
         <Toaster position="bottom-right" toastOptions={{
           className: 'text-sm font-medium dark:bg-slate-800 dark:text-white dark:border dark:border-slate-700',

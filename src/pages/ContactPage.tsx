@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react';
-import { Mail, Phone, MapPin, Send, CheckCircle, Clock, MessageSquare } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, CheckCircle, Clock, MessageSquare, Lock } from 'lucide-react';
 import { SEOHead } from '../components/seo/SEOHead';
+import { useAuthStore } from '../store/authStore';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Button } from '../components/ui/button';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -53,18 +56,36 @@ export const ContactPage = () => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user) {
+      toast.error('Please login to send a message');
+      navigate('/login', { state: { from: location } });
+      return;
+    }
+
+    if (!WEB3FORMS_KEY) {
+      toast.error('Contact form is not configured. Missing API key.');
+      return;
+    }
+
     setLoading(true);
 
     const formData = new FormData(formRef.current!);
-    formData.append('access_key', WEB3FORMS_KEY);
 
     try {
       const res = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(Object.fromEntries(formData)),
       });
       const data = await res.json();
 
@@ -73,9 +94,10 @@ export const ContactPage = () => {
         toast.success('Message sent successfully!');
         formRef.current?.reset();
       } else {
-        toast.error('Failed to send message. Please try again.');
+        toast.error(data.message || 'Failed to send message. Please try again.');
       }
-    } catch {
+    } catch (err: any) {
+      console.error("Contact Form Error:", err);
       toast.error('Network error. Please check your connection.');
     } finally {
       setLoading(false);
@@ -109,7 +131,7 @@ export const ContactPage = () => {
       />
 
       <div className="relative z-10 pt-10 pb-24">
-        <div className="container mx-auto px-4 max-w-6xl">
+        <div className="container mx-auto px-4">
 
           {/* Hero */}
           <motion.div
@@ -224,92 +246,114 @@ export const ContactPage = () => {
                         </div>
                       </div>
 
-                      <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
-                        <input type="hidden" name="access_key" value={WEB3FORMS_KEY} />
-                        <input type="hidden" name="from_name" value="StyleHub Contact Form" />
-
-                        <div className="grid sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-foreground/80">First Name</label>
-                            <input
-                              type="text"
-                              name="first_name"
-                              required
-                              placeholder="John"
-                              className={inputClass}
-                            />
+                      {!user ? (
+                        <div className="text-center py-12 px-6 bg-gray-50/50 dark:bg-slate-900/30 rounded-2xl border border-dashed border-border">
+                          <div className="h-16 w-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Lock className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                           </div>
-                          <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-foreground/80">Last Name</label>
-                            <input
-                              type="text"
-                              name="last_name"
-                              required
-                              placeholder="Doe"
-                              className={inputClass}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-sm font-medium text-foreground/80">Email Address</label>
-                          <input
-                            type="email"
-                            name="email"
-                            required
-                            placeholder="john@example.com"
-                            className={inputClass}
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-sm font-medium text-foreground/80">Subject</label>
-                          <select
-                            name="subject"
-                            className={inputClass + ' appearance-none cursor-pointer'}
+                          <h3 className="text-xl font-bold mb-2">Login Required</h3>
+                          <p className="text-muted-foreground mb-6">You need to be logged in to send us a message.</p>
+                          <Button 
+                            size="lg" 
+                            onClick={() => navigate('/login', { state: { from: location } })}
+                            className="px-8"
                           >
-                            <option value="Order Support">Order Support</option>
-                            <option value="Product Inquiry">Product Inquiry</option>
-                            <option value="Returns & Exchanges">Returns & Exchanges</option>
-                            <option value="Feedback">Feedback</option>
-                            <option value="Other">Other</option>
-                          </select>
+                            Login to Message
+                          </Button>
                         </div>
+                      ) : (
+                        <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
+                          <input type="hidden" name="access_key" value={WEB3FORMS_KEY} />
+                          <input type="hidden" name="from_name" value="StyleHub Contact Form" />
+                          <input type="hidden" name="replyto" value={user.email} />
 
-                        <div className="space-y-1.5">
-                          <label className="text-sm font-medium text-foreground/80">Message</label>
-                          <textarea
-                            name="message"
-                            rows={5}
-                            required
-                            placeholder="How can we help you?"
-                            className={inputClass + ' resize-none'}
-                          />
-                        </div>
+                          <div className="grid sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-sm font-medium text-foreground/80">First Name</label>
+                              <input
+                                type="text"
+                                name="first_name"
+                                required
+                                defaultValue={user.name.split(' ')[0]}
+                                placeholder="John"
+                                className={inputClass}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-sm font-medium text-foreground/80">Last Name</label>
+                              <input
+                                type="text"
+                                name="last_name"
+                                required
+                                defaultValue={user.name.split(' ').slice(1).join(' ')}
+                                placeholder="Doe"
+                                className={inputClass}
+                              />
+                            </div>
+                          </div>
 
-                        <motion.button
-                          whileHover={{ scale: 1.01, y: -1 }}
-                          whileTap={{ scale: 0.98 }}
-                          type="submit"
-                          disabled={loading}
-                          className="w-full sm:w-auto h-13 px-10 py-3.5 bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-600 hover:from-blue-700 hover:via-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30 transition-all text-base disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
-                        >
-                          {loading ? (
-                            <>
-                              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                              </svg>
-                              Sending...
-                            </>
-                          ) : (
-                            <>
-                              <Send className="h-4 w-4" />
-                              Send Message
-                            </>
-                          )}
-                        </motion.button>
-                      </form>
+                          <div className="space-y-1.5">
+                            <label className="text-sm font-medium text-foreground/80">Email Address</label>
+                            <input
+                              type="email"
+                              name="email"
+                              required
+                              readOnly
+                              value={user.email}
+                              placeholder="john@example.com"
+                              className={inputClass + ' opacity-70 cursor-not-allowed bg-gray-100 dark:bg-slate-800'}
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-sm font-medium text-foreground/80">Subject</label>
+                            <select
+                              name="subject"
+                              className={inputClass + ' appearance-none cursor-pointer'}
+                            >
+                              <option value="Order Support">Order Support</option>
+                              <option value="Product Inquiry">Product Inquiry</option>
+                              <option value="Returns & Exchanges">Returns & Exchanges</option>
+                              <option value="Feedback">Feedback</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-sm font-medium text-foreground/80">Message</label>
+                            <textarea
+                              name="message"
+                              rows={5}
+                              required
+                              placeholder="How can we help you?"
+                              className={inputClass + ' resize-none'}
+                            />
+                          </div>
+
+                          <motion.button
+                            whileHover={{ scale: 1.01, y: -1 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="submit"
+                            disabled={loading}
+                            className="w-full sm:w-auto h-13 px-10 py-3.5 bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-600 hover:from-blue-700 hover:via-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30 transition-all text-base disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {loading ? (
+                              <>
+                                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                                Sending...
+                              </>
+                            ) : (
+                              <>
+                                <Send className="h-4 w-4" />
+                                Send Message
+                              </>
+                            )}
+                          </motion.button>
+                        </form>
+                      )}
                     </div>
                   </div>
                 </motion.div>

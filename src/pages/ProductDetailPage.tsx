@@ -121,20 +121,32 @@ export const ProductDetailPage = () => {
           const allProducts = await api.products.list();
           let related = allProducts.filter(p => p.id !== currentProduct.id);
           
-          if (currentProduct.category === 'Shoes') {
-             // If viewing shoes, ONLY suggest other shoes (matching the same gender if possible)
-             let shoeSuggestions = related.filter(p => p.category === 'Shoes');
+          if (currentProduct.category.toLowerCase() === 'shoes') {
+             // If viewing shoes, suggest other shoes (matching gender if possible)
+             let shoeSuggestions = related.filter(p => p.category.toLowerCase() === 'shoes');
              if (currentProduct.subCategory) {
                  shoeSuggestions = shoeSuggestions.filter(p => p.subCategory === currentProduct.subCategory);
              }
              related = shoeSuggestions.sort(() => 0.5 - Math.random());
-          } else if (currentProduct.category === 'Clothes') {
-             // For clothes, strictly suggest other clothes of the exact same gender (shirts, pants, etc. for that gender)
-             related = related.filter(p => p.category === 'Clothes' && p.subCategory === currentProduct.subCategory);
+          } else if (['clothing', 'clothes', 'apparel', 'fashion'].includes(currentProduct.category.toLowerCase())) {
+             // For clothes, strictly suggest other clothes of the exact same gender (subCategory)
+             related = related.filter(p => 
+               ['clothing', 'clothes', 'apparel', 'fashion'].includes(p.category.toLowerCase()) && 
+               p.subCategory === currentProduct.subCategory
+             );
+             related = related.sort(() => 0.5 - Math.random());
+          } else if (currentProduct.category.toLowerCase() === 'electronics') {
+             // For Electronics, suggest other tech (same category or peripherals)
+             related = related.filter(p => 
+               p.category.toLowerCase() === 'electronics' || 
+               p.name.toLowerCase().includes('keyboard') || 
+               p.name.toLowerCase().includes('mouse') ||
+               p.name.toLowerCase().includes('monitor')
+             );
              related = related.sort(() => 0.5 - Math.random());
           } else {
-             // For Electronics, Home, Jewelry, Sports, etc. suggest from exact same category
-             related = related.filter(p => p.category === currentProduct.category);
+             // For Home, Jewelry, Sports, etc. suggest from exact same category
+             related = related.filter(p => p.category.toLowerCase() === currentProduct.category.toLowerCase());
              related = related.sort(() => 0.5 - Math.random());
           }
           
@@ -184,7 +196,6 @@ export const ProductDetailPage = () => {
         return;
       }
       addItem({ ...product, size: requiresSize ? selectedSize : undefined } as any);
-      toast.success('Added to cart');
     }
   };
 
