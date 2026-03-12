@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { GradientButton } from '../components/ui/GradientButton';
 import { BackButton } from '../components/ui/button-7';
+import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
 import { SEOHead } from '../components/seo/SEOHead';
 import toast from 'react-hot-toast';
@@ -25,6 +26,12 @@ type SignUpForm = z.infer<typeof signUpSchema>;
 
 export const SignUpPage = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useAuthStore();
+
+  // ✅ FIX: Redirect already-logged-in users away from the signup page.
+  if (!isLoading && isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
   const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);

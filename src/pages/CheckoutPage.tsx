@@ -185,7 +185,7 @@ const CheckoutForm = ({ shippingDetails, items, isDirect }: CheckoutFormProps) =
 // Main Page
 // ─────────────────────────────────────────────────────────────────────────────
 export const CheckoutPage = () => {
-  const { items: cartItems, total: cartTotal } = useCartStore();
+  const { items: cartItems, total: cartTotal, clearCart } = useCartStore();
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -209,6 +209,7 @@ export const CheckoutPage = () => {
   const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'UPI' | 'COD'>('CARD');
   const [upiId, setUpiId] = useState('');
   const [showUpiInput, setShowUpiInput] = useState(false);
+  const [isUpiProcessing, setIsUpiProcessing] = useState(false);
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -369,16 +370,16 @@ export const CheckoutPage = () => {
             </div>
 
             {paymentMethod === 'UPI' && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-xl border border-border space-y-3"
+                className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-xl border border-border space-y-4"
               >
                 <label className="text-sm font-bold text-foreground">Enter UPI ID</label>
                 <div className="flex gap-2">
-                  <Input 
-                    placeholder="username@bank" 
-                    value={upiId} 
+                  <Input
+                    placeholder="username@bank"
+                    value={upiId}
                     onChange={e => setUpiId(e.target.value)}
                     className="flex-1"
                   />
@@ -394,6 +395,32 @@ export const CheckoutPage = () => {
                   </Button>
                 </div>
                 <p className="text-[10px] text-muted-foreground italic">You will receive a payment request on your UPI app.</p>
+
+                {/* ✅ FIX: Added confirm button for UPI — was missing before */}
+                <Button
+                  className="w-full"
+                  disabled={isUpiProcessing || !upiId.trim() || !upiId.includes('@')}
+                  isLoading={isUpiProcessing}
+                  onClick={async () => {
+                    if (!user) { toast.error('Please log in first.'); return; }
+                    if (!upiId.includes('@')) { toast.error('Enter a valid UPI ID (e.g. name@upi)'); return; }
+                    if (!shipping.address || !shipping.pincode) { toast.error('Please fill in shipping details.'); return; }
+                    setIsUpiProcessing(true);
+                    try {
+                      // UPI orders bypass Stripe — create the order directly.
+                      await api.orders.create(user.id, items, displayTotal);
+                      toast.success('UPI payment request sent! Order placed successfully.');
+                      if (!isDirect) clearCart();
+                      navigate('/profile');
+                    } catch (err: any) {
+                      toast.error(err.message || 'Failed to place order. Please try again.');
+                    } finally {
+                      setIsUpiProcessing(false);
+                    }
+                  }}
+                >
+                  {isUpiProcessing ? 'Processing…' : `Confirm UPI Payment · ${formatPrice(displayTotal)}`}
+                </Button>
               </motion.div>
             )}
 

@@ -478,6 +478,38 @@ export const api = {
         throw e; // Propagate error to UI — do not silently swallow
       }
     },
+
+    delete: async (reviewId: string, productId: string): Promise<void> => {
+      try {
+        const { error } = await supabase
+          .from('reviews')
+          .delete()
+          .eq('id', reviewId);
+
+        if (error) throw new Error(error.message);
+
+        // Recalculate product rating after deletion
+        const { data: remaining } = await supabase
+          .from('reviews')
+          .select('rating')
+          .eq('product_id', productId);
+
+        if (remaining !== null) {
+          const newCount = remaining.length;
+          const newRating =
+            newCount > 0
+              ? remaining.reduce((sum: number, r: any) => sum + r.rating, 0) / newCount
+              : 0;
+
+          await api.products.update(productId, {
+            rating: Number(newRating.toFixed(1)),
+            reviewCount: newCount,
+          });
+        }
+      } catch (e: any) {
+        throw e;
+      }
+    },
   },
 
   orders: {

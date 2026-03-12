@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 import { GradientButton } from '../components/ui/GradientButton';
 import { BackButton } from '../components/ui/button-7';
 import { supabase } from '../lib/supabase';
@@ -23,8 +24,13 @@ export const LoginPage = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const { isAuthenticated, isLoading } = useAuthStore();
 
-  const from = location.state?.from?.pathname || '/';
+  // ✅ FIX: If user is already logged in, redirect them away from the login page.
+  const from = (location.state as any)?.from?.pathname || '/';
+  if (!isLoading && isAuthenticated) {
+    return <Navigate to={from} replace />;
+  }
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),

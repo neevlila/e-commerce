@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
-import { Order } from '../types';
+import { Order, Product } from '../types';
 import { formatPrice } from '../lib/utils';
 import { SEOHead } from '../components/seo/SEOHead';
 import { 
@@ -13,7 +13,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/Input';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Review } from '../types';
 import { StarRating } from '../components/ui/StarRating';
@@ -28,6 +28,7 @@ export const ProfilePage = () => {
   const { user, updateProfile, logout } = useAuthStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [userReviews, setUserReviews] = useState<Review[]>([]);
+  const [reviewProducts, setReviewProducts] = useState<Record<string, Product>>({});
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
@@ -55,7 +56,7 @@ export const ProfilePage = () => {
             .order('created_at', { ascending: false });
             
           if (!reviewsError && reviewsData) {
-            setUserReviews(reviewsData.map(r => ({
+            const mapped = reviewsData.map(r => ({
               id: r.id,
               userId: r.user_id,
               userName: r.user_name,
@@ -63,7 +64,24 @@ export const ProfilePage = () => {
               rating: r.rating,
               comment: r.comment,
               createdAt: r.created_at
-            })));
+            }));
+            setUserReviews(mapped);
+
+            // Fetch product details for each reviewed product
+            const uniqueProductIds = [...new Set(mapped.map(r => r.productId))];
+            if (uniqueProductIds.length > 0) {
+              const { data: productsData } = await supabase
+                .from('products')
+                .select('id, name, image_url, category')
+                .in('id', uniqueProductIds);
+              if (productsData) {
+                const productMap: Record<string, Product> = {};
+                productsData.forEach((p: any) => {
+                  productMap[p.id] = { id: p.id, name: p.name, imageUrl: p.image_url, category: p.category } as Product;
+                });
+                setReviewProducts(productMap);
+              }
+            }
           }
         } catch (error) {
           console.error(error);
@@ -275,7 +293,20 @@ export const ProfilePage = () => {
                   <PlaceholderSection title="Notifications" icon={Bell} />
                 )}
                 {activeSection === 'reviews' && (
-                  <ReviewsSection reviews={userReviews} loading={loading} />
+                  <ReviewsSection
+                    reviews={userReviews}
+                    reviewProducts={reviewProducts}
+                    loading={loading}
+                    onDelete={async (reviewId: string, productId: string) => {
+                      try {
+                        await api.reviews.delete(reviewId, productId);
+                        setUserReviews(prev => prev.filter(r => r.id !== reviewId));
+                        toast.success('Review deleted');
+                      } catch (err: any) {
+                        toast.error(err.message || 'Failed to delete review');
+                      }
+                    }}
+                  />
                 )}
                 {activeSection === 'addresses' && (
                   <AddressesSection user={user} updateProfile={updateProfile} />
@@ -456,37 +487,110 @@ const PlaceholderSection = ({ title, icon: Icon }: { title: string, icon: any })
   </div>
 );
 
-const ReviewsSection = ({ reviews, loading }: { reviews: Review[], loading: boolean }) => (
-  <div>
-    <h2 className="text-xl font-bold text-foreground mb-8">My Reviews & Ratings</h2>
-    {loading ? (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    ) : reviews.length === 0 ? (
-      <div className="text-center py-16 bg-gray-50 dark:bg-slate-900/50 rounded-sm border border-dashed border-border">
-        <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <p className="text-muted-foreground">You haven't given any reviews yet.</p>
-      </div>
-    ) : (
-      <div className="space-y-6">
-        {reviews.map((review) => (
-          <div key={review.id} className="border border-border/50 rounded-sm p-6 hover:shadow-sm transition-shadow bg-white dark:bg-slate-800">
-            <div className="flex items-center gap-2 mb-2">
-              <StarRating rating={review.rating} size={16} />
-              <span className="text-sm font-bold text-foreground ml-2">{review.rating} ★</span>
-            </div>
-            <p className="text-foreground mb-4 leading-relaxed">{review.comment}</p>
-            <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border/30 pt-4">
-              <span>Posted on {new Date(review.createdAt).toLocaleDateString()}</span>
-              <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-green-500" /> Verified Purchase</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-);
+const ReviewsSection = ({
+  reviews,
+  reviewProducts,
+  loading,
+  onDelete,
+}: {
+  reviews: Review[];
+  reviewProducts: Record<string, Product>;
+  loading: boolean;
+  onDelete: (reviewId: string, productId: string) => Promise<void>;
+}) => {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (reviewId: string, productId: string) => {
+    if (!confirm('Are you sure you want to delete this review?')) return;
+    setDeletingId(reviewId);
+    try {
+      await onDelete(reviewId, productId);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="text-xl font-bold text-foreground mb-8">My Reviews & Ratings</h2>
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      ) : reviews.length === 0 ? (
+        <div className="text-center py-16 bg-gray-50 dark:bg-slate-900/50 rounded-sm border border-dashed border-border">
+          <CheckCircle2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">You haven't given any reviews yet.</p>
+          <Link to="/products" className="text-blue-600 text-sm font-bold hover:underline mt-2 inline-block">
+            Browse products to review
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {reviews.map((review) => {
+            const product = reviewProducts[review.productId];
+            return (
+              <div key={review.id} className="border border-border/50 rounded-sm bg-white dark:bg-slate-800 hover:shadow-sm transition-shadow overflow-hidden">
+                {/* Product row — click to view product */}
+                {product && (
+                  <Link
+                    to={`/products/${review.productId}`}
+                    className="flex items-center gap-3 px-5 py-3 bg-gray-50 dark:bg-slate-900/60 border-b border-border/40 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors group"
+                  >
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="h-11 w-11 object-cover rounded-sm border border-border/40 flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground group-hover:text-blue-600 transition-colors truncate">
+                        {product.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{product.category}</p>
+                    </div>
+                    <span className="text-xs text-blue-500 font-bold shrink-0 group-hover:underline">View Product →</span>
+                  </Link>
+                )}
+
+                {/* Review content */}
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-3">
+                        <StarRating rating={review.rating} size={16} />
+                        <span className="text-sm font-bold text-foreground">{review.rating}/5</span>
+                      </div>
+                      <p className="text-foreground leading-relaxed text-sm">{review.comment}</p>
+                    </div>
+                    {/* Delete button */}
+                    <button
+                      onClick={() => handleDelete(review.id, review.productId)}
+                      disabled={deletingId === review.id}
+                      className="flex-shrink-0 p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-sm transition-colors disabled:opacity-40"
+                      title="Delete review"
+                    >
+                      {deletingId === review.id
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Trash2 className="h-4 w-4" />
+                      }
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border/30 pt-3 mt-4">
+                    <span>Posted on {new Date(review.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    <span className="flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3 text-green-500" /> Verified Purchase
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AddressesSection = ({ user, updateProfile }: { user: any, updateProfile: any }) => {
   const [showAdd, setShowAdd] = useState(false);
