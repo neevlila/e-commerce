@@ -54,8 +54,8 @@ export const LoginPage = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Redirect back to the page the user was on
-          redirectTo: `${window.location.origin}${from}`,
+          // Explicitly redirect to the current window's origin
+          redirectTo: window.location.origin,
         },
       });
       if (error) throw error;

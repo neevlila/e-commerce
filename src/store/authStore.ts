@@ -18,9 +18,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   isLoading: true,
   setUser: (user) => set({ user, isAuthenticated: !!user, isLoading: false }),
-  updateProfile: (updates) => set((state) => ({
-    user: state.user ? { ...state.user, ...updates } : null
-  })),
+  updateProfile: (updates) => set((state) => {
+    const updatedUser = state.user ? { ...state.user, ...updates } : null;
+    if (state.user && updates) {
+      api.auth.updateProfile(state.user.id, updates).catch(console.error);
+    }
+    return { user: updatedUser };
+  }),
   logout: async () => {
     await supabase.auth.signOut();
     set({ user: null, isAuthenticated: false });

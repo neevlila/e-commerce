@@ -1,169 +1,132 @@
-/*
-  # E-commerce Schema Setup
-  
-  ## Query Description:
-  Sets up the core tables for the e-commerce platform: profiles, products, orders, and order items.
-  Includes Row Level Security (RLS) policies to ensure data safety.
-  
-  ## Metadata:
-  - Schema-Category: "Structural"
-  - Impact-Level: "High"
-  - Requires-Backup: false
-  - Reversible: true
-  
-  ## Structure Details:
-  - public.profiles: Extends auth.users with app-specific data (role, name).
-  - public.products: Stores product inventory.
-  - public.orders: Stores order headers.
-  - public.order_items: Stores line items for orders.
-  - public.cart_items: Server-side cart persistence.
-  
-  ## Security Implications:
-  - RLS enabled on all tables.
-  - Public read access for products.
-  - Admin-only write access for products.
-  - Users can only see/edit their own data.
-*/
+-- ─────────────────────────────────────────────────────────────────────────────
+-- supabase/migrations/20250101000001_security_fixes.sql
+--
+-- Run this in your Supabase SQL Editor (Dashboard → SQL Editor → New query)
+-- or add it as a migration: supabase db push
+-- ─────────────────────────────────────────────────────────────────────────────
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- ── 1. HOW TO SET A USER AS ADMIN ────────────────────────────────────────────
+-- Replace <user-id> with the UUID from auth.users for the account you want to
+-- be admin. Find it in: Supabase Dashboard → Authentication → Users.
+--
+-- UPDATE profiles SET role = 'ADMIN' WHERE id = '<user-id>';
 
--- Create Profiles Table (Linked to Auth)
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL,
-  full_name TEXT,
-  role TEXT DEFAULT 'USER' CHECK (role IN ('USER', 'ADMIN')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
 
--- Create Products Table
-CREATE TABLE IF NOT EXISTS public.products (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  description TEXT,
-  price DECIMAL(10, 2) NOT NULL,
-  image_url TEXT,
-  category TEXT,
-  stock INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- ── 2. ROW LEVEL SECURITY for products table ──────────────────────────────────
+-- Allow anyone to READ products, but only ADMIN users can write.
 
--- Create Orders Table
-CREATE TABLE IF NOT EXISTS public.orders (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-  total DECIMAL(10, 2) NOT NULL,
-  status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 
--- Create Order Items Table
-CREATE TABLE IF NOT EXISTS public.order_items (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  order_id UUID REFERENCES public.orders(id) ON DELETE CASCADE,
-  product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
-  quantity INTEGER NOT NULL DEFAULT 1,
-  price_at_purchase DECIMAL(10, 2) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- RLS POLICIES
-
--- Profiles: Users can view/edit their own profile. Admins can view all.
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own profile" 
-  ON public.profiles FOR SELECT 
-  USING (auth.uid() = id);
-
-CREATE POLICY "Users can update own profile" 
-  ON public.profiles FOR UPDATE 
-  USING (auth.uid() = id);
-
--- Products: Everyone can view. Only Admins can insert/update/delete.
-ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Public can view products" 
-  ON public.products FOR SELECT 
+-- Anyone can read products
+CREATE POLICY "products_select_public"
+  ON products FOR SELECT
   USING (true);
 
-CREATE POLICY "Admins can manage products" 
-  ON public.products FOR ALL 
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles 
-      WHERE profiles.id = auth.uid() AND profiles.role = 'ADMIN'
-    )
-  );
-
--- Orders: Users can view/create their own orders. Admins can view all.
-ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own orders" 
-  ON public.orders FOR SELECT 
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can create own orders" 
-  ON public.orders FOR INSERT 
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Admins can view all orders" 
-  ON public.orders FOR SELECT 
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles 
-      WHERE profiles.id = auth.uid() AND profiles.role = 'ADMIN'
-    )
-  );
-
--- Order Items: Inherit access from Orders (simplified for this demo, usually requires more complex policies or just checking order ownership)
-ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own order items" 
-  ON public.order_items FOR SELECT 
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.orders 
-      WHERE orders.id = order_items.order_id AND orders.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can create own order items" 
-  ON public.order_items FOR INSERT 
+-- Only admins can insert products
+CREATE POLICY "products_insert_admin_only"
+  ON products FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.orders 
-      WHERE orders.id = order_items.order_id AND orders.user_id = auth.uid()
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+        AND profiles.role = 'ADMIN'
     )
   );
 
--- TRIGGER: Automatically create profile on signup
-CREATE OR REPLACE FUNCTION public.handle_new_user()
+-- Only admins can update products
+CREATE POLICY "products_update_admin_only"
+  ON products FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+        AND profiles.role = 'ADMIN'
+    )
+  );
+
+-- Only admins can delete products
+CREATE POLICY "products_delete_admin_only"
+  ON products FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+        AND profiles.role = 'ADMIN'
+    )
+  );
+
+
+-- ── 3. ROW LEVEL SECURITY for reviews table ───────────────────────────────────
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can read reviews
+CREATE POLICY "reviews_select_public"
+  ON reviews FOR SELECT
+  USING (true);
+
+-- Authenticated users can insert their own reviews (max 2 per product enforced by function/trigger)
+CREATE POLICY "reviews_insert_authenticated"
+  ON reviews FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- Users can only delete their own reviews
+CREATE POLICY "reviews_delete_own"
+  ON reviews FOR DELETE
+  USING (auth.uid() = user_id);
+
+
+-- ── 4. DB TRIGGER: enforce max 2 reviews per user per product ─────────────────
+CREATE OR REPLACE FUNCTION check_review_limit()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, role)
-  VALUES (
-    new.id, 
-    new.email, 
-    COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', 'New User'),
-    'USER' -- Default role
-  );
-  RETURN new;
+  IF (
+    SELECT COUNT(*) FROM reviews
+    WHERE user_id = NEW.user_id
+      AND product_id = NEW.product_id
+  ) >= 2 THEN
+    RAISE EXCEPTION 'You can only submit up to 2 reviews for this product.';
+  END IF;
+  RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+CREATE TRIGGER enforce_review_limit
+  BEFORE INSERT ON reviews
+  FOR EACH ROW EXECUTE FUNCTION check_review_limit();
 
--- SEED DATA (Optional, for initial setup)
-INSERT INTO public.products (name, description, price, image_url, category, stock)
-VALUES 
-  ('Premium Wireless Headphones', 'High-fidelity audio with active noise cancellation.', 299.99, 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80', 'Electronics', 50),
-  ('Ergonomic Office Chair', 'Breathable mesh backrest with adjustable lumbar support.', 199.50, 'https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?w=800&q=80', 'Furniture', 20),
-  ('Mechanical Gaming Keyboard', 'RGB backlit mechanical keyboard with blue switches.', 129.00, 'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=800&q=80', 'Electronics', 15),
-  ('Smart Fitness Watch', 'Track your heart rate, steps, and sleep.', 89.99, 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80', 'Wearables', 100);
+
+-- ── 5. ROW LEVEL SECURITY for orders table ────────────────────────────────────
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+
+-- Users can only see their own orders
+CREATE POLICY "orders_select_own"
+  ON orders FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Users can only insert their own orders
+CREATE POLICY "orders_insert_own"
+  ON orders FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- Users can update (cancel) their own orders only
+CREATE POLICY "orders_update_own"
+  ON orders FOR UPDATE
+  USING (auth.uid() = user_id);
+
+
+-- ── 6. ROW LEVEL SECURITY for profiles table ──────────────────────────────────
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Users can read their own profile
+CREATE POLICY "profiles_select_own"
+  ON profiles FOR SELECT
+  USING (auth.uid() = id);
+
+-- Users can update their own profile (but NOT their own role — use a separate admin function)
+CREATE POLICY "profiles_update_own"
+  ON profiles FOR UPDATE
+  USING (auth.uid() = id)
+  WITH CHECK (
+    -- Prevent self-promotion: users cannot change their own role
+    role = (SELECT role FROM profiles WHERE id = auth.uid())
+  );

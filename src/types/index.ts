@@ -5,16 +5,37 @@ export interface User {
   email: string;
   name: string;
   role: Role;
+  addresses?: Address[];
+  upiDetails?: UPIDetail[];
+  cardDetails?: CardDetail[];
 }
 
-export interface Review {
+export interface Address {
   id: string;
-  userId: string;
-  userName: string;
-  productId: string;
-  rating: number;
-  comment: string;
-  createdAt: string;
+  firstName: string;
+  lastName: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  isDefault: boolean;
+}
+
+export interface UPIDetail {
+  id: string;
+  upiId: string;
+  name: string;
+  isDefault: boolean;
+}
+
+export interface CardDetail {
+  id: string;
+  last4: string;
+  brand: string;
+  expMonth: number;
+  expYear: number;
+  holderName: string;
+  isDefault: boolean;
 }
 
 export interface Product {
@@ -24,12 +45,12 @@ export interface Product {
   price: number;
   imageUrl: string;
   category: string;
-  subCategory?: string; // Added for Clothes filtering
-  company: string; // Brand / Company name
+  subCategory?: string;
+  company: string;
   stock: number;
-  createdAt: string;
   rating?: number;
   reviewCount?: number;
+  createdAt: string;
 }
 
 export interface CartItem extends Product {
@@ -42,11 +63,18 @@ export interface Order {
   userId: string;
   items: CartItem[];
   total: number;
-  status: 'PENDING' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  status: 'PENDING' | 'PAID' | 'CANCELLED';
   createdAt: string;
 }
 
-export interface AuthResponse {
-  user: User;
-  session: any;
+export interface Review {
+  id: string;
+  userId: string;
+  userName: string;
+  productId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
 }
+
+export type SortOption = 'latest' | 'price-low-high' | 'price-high-low' | 'top-rated' | 'most-popular';

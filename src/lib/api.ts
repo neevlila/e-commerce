@@ -14,9 +14,8 @@ const mapProduct = (data: any): Product => ({
   company: data.company || 'Unknown',
   stock: data.stock,
   createdAt: data.created_at || data.createdAt,
-  // If we have joined reviews or stored aggregates
   rating: data.rating || 0,
-  reviewCount: data.review_count || data.reviewCount || 0
+  reviewCount: data.review_count || data.reviewCount || 0,
 });
 
 const mapReview = (data: any): Review => ({
@@ -26,7 +25,7 @@ const mapReview = (data: any): Review => ({
   productId: data.product_id,
   rating: data.rating,
   comment: data.comment,
-  createdAt: data.created_at
+  createdAt: data.created_at,
 });
 
 // Timeout helper
@@ -35,68 +34,86 @@ const withTimeout = <T>(promise: any, ms: number = 2000): Promise<T> => {
     promise as Promise<T>,
     new Promise<T>((_, reject) =>
       setTimeout(() => reject(new Error('Request timed out')), ms)
-    )
+    ),
   ]);
 };
 
-// Local Storage Helpers
+// ─── Local Storage Helpers ────────────────────────────────────────────────────
+// Used as a performance cache only — never as a source of truth for auth/limits.
 const STORAGE_KEY = 'stylehub-products-v1';
-const REVIEWS_KEY = 'stylehub-reviews-v1';
 
 const getLocalProducts = (): Product[] | null => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     return stored ? JSON.parse(stored) : null;
-  } catch (e) { return null; }
+  } catch (e) {
+    return null;
+  }
 };
 
 const setLocalProducts = (products: Product[]) => {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(products)); } catch (e) { }
-};
-
-const getLocalReviews = (): Review[] => {
   try {
-    const stored = localStorage.getItem(REVIEWS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch (e) { return []; }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+  } catch (e) {
+    /* quota exceeded — non-fatal */
+  }
 };
 
-const setLocalReviews = (reviews: Review[]) => {
-  try { localStorage.setItem(REVIEWS_KEY, JSON.stringify(reviews)); } catch (e) { }
-};
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const api = {
   auth: {
     getProfile: async (userId: string): Promise<User | null> => {
       try {
-        const { data, error } = await withTimeout<any>(
+        const { data, error } = (await withTimeout<any>(
           supabase.from('profiles').select('*').eq('id', userId).single()
-        ) as any;
+        )) as any;
         if (error) return null;
         return {
           id: data.id,
           email: data.email,
           name: data.full_name,
           role: data.role as 'USER' | 'ADMIN',
+          addresses: data.addresses || [],
+          upiDetails: data.upi_details || [],
+          cardDetails: data.card_details || [],
         };
-      } catch (e) { return null; }
+      } catch (e) {
+        return null;
+      }
+    },
+    updateProfile: async (userId: string, updates: Partial<User>): Promise<void> => {
+      try {
+        const dbUpdates: any = {};
+        if (updates.name) dbUpdates.full_name = updates.name;
+        if (updates.addresses) dbUpdates.addresses = updates.addresses;
+        if (updates.upiDetails) dbUpdates.upi_details = updates.upiDetails;
+        if (updates.cardDetails) dbUpdates.card_details = updates.cardDetails;
+
+        const { error } = await supabase
+          .from('profiles')
+          .update(dbUpdates)
+          .eq('id', userId);
+        if (error) throw error;
+      } catch (e) {
+        console.error('Update profile error:', e);
+        throw e;
+      }
     },
   },
 
   products: {
     list: async (): Promise<Product[]> => {
       try {
-        // Try DB
-        const { data, error } = await withTimeout<any>(
+        const { data, error } = (await withTimeout<any>(
           supabase.from('products').select('*').order('created_at', { ascending: false })
-        ) as any;
+        )) as any;
 
         if (error) throw error;
 
         if (!data || data.length === 0) {
           const local = getLocalProducts();
           if (local && local.length >= MOCK_PRODUCTS.length) return local;
-          // Use the massive static list if DB is empty
           setLocalProducts(MOCK_PRODUCTS);
           return MOCK_PRODUCTS;
         }
@@ -104,7 +121,6 @@ export const api = {
         const mappedData = data.map(mapProduct);
         setLocalProducts(mappedData);
         return mappedData;
-
       } catch (error) {
         const local = getLocalProducts();
         if (local && local.length >= MOCK_PRODUCTS.length) return local;
@@ -112,35 +128,39 @@ export const api = {
         return MOCK_PRODUCTS;
       }
     },
+
     get: async (id: string): Promise<Product | undefined> => {
       const local = getLocalProducts() || MOCK_PRODUCTS;
-      const localProduct = local.find(p => p.id === id);
+      const localProduct = local.find((p) => p.id === id);
 
       try {
-        const { data, error } = await withTimeout<any>(
+        const { data, error } = (await withTimeout<any>(
           supabase.from('products').select('*').eq('id', id).single()
-        ) as any;
+        )) as any;
         if (error) throw error;
         return mapProduct(data);
       } catch (error) {
         return localProduct;
       }
     },
+
     create: async (product: Omit<Product, 'id' | 'createdAt'>): Promise<Product> => {
       try {
         const { data, error } = await supabase
           .from('products')
-          .insert([{
-            name: product.name,
-            description: product.description,
-            price: product.price,
-            image_url: product.imageUrl,
-            category: product.category,
-            company: product.company,
-            stock: product.stock,
-            rating: product.rating || 0,
-            review_count: product.reviewCount || 0
-          }])
+          .insert([
+            {
+              name: product.name,
+              description: product.description,
+              price: product.price,
+              image_url: product.imageUrl,
+              category: product.category,
+              company: product.company,
+              stock: product.stock,
+              rating: product.rating || 0,
+              review_count: product.reviewCount || 0,
+            },
+          ])
           .select()
           .single();
 
@@ -155,17 +175,17 @@ export const api = {
           id: `local-${Date.now()}`,
           createdAt: new Date().toISOString(),
           rating: product.rating || 0,
-          reviewCount: product.reviewCount || 0
+          reviewCount: product.reviewCount || 0,
         };
         const current = getLocalProducts() || MOCK_PRODUCTS;
         setLocalProducts([newProduct, ...current]);
         return newProduct;
       }
     },
+
     createBulk: async (products: Omit<Product, 'id' | 'createdAt'>[]): Promise<void> => {
-      // Bulk insert for seeding
       try {
-        const dbPayload = products.map(p => ({
+        const dbPayload = products.map((p) => ({
           name: p.name,
           description: p.description,
           price: p.price,
@@ -174,30 +194,29 @@ export const api = {
           company: p.company,
           stock: p.stock,
           rating: p.rating || 0,
-          review_count: p.reviewCount || 0
+          review_count: p.reviewCount || 0,
         }));
 
         const { error } = await supabase.from('products').insert(dbPayload);
         if (error) throw error;
       } catch (e) {
-        console.warn("Bulk DB insert failed, using local");
+        console.warn('Bulk DB insert failed, using local');
         const current = getLocalProducts() || [];
         const newLocal = products.map((p, i) => ({
           ...p,
           id: `local-bulk-${Date.now()}-${i}`,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         }));
         setLocalProducts([...newLocal, ...current]);
       }
     },
-    update: async (id: string, updates: Partial<Product>): Promise<Product> => {
-      // Update Local
-      const current = getLocalProducts() || MOCK_PRODUCTS;
-      const updatedLocal = current.map(p => p.id === id ? { ...p, ...updates } : p);
-      setLocalProducts(updatedLocal);
-      const updatedItem = updatedLocal.find(p => p.id === id)!;
 
-      // Try DB
+    update: async (id: string, updates: Partial<Product>): Promise<Product> => {
+      const current = getLocalProducts() || MOCK_PRODUCTS;
+      const updatedLocal = current.map((p) => (p.id === id ? { ...p, ...updates } : p));
+      setLocalProducts(updatedLocal);
+      const updatedItem = updatedLocal.find((p) => p.id === id)!;
+
       try {
         const { data, error } = await supabase
           .from('products')
@@ -208,7 +227,7 @@ export const api = {
             image_url: updates.imageUrl,
             category: updates.category,
             company: updates.company,
-            stock: updates.stock
+            stock: updates.stock,
           })
           .eq('id', id)
           .select()
@@ -223,7 +242,7 @@ export const api = {
 
     getRecommendations: async (cartItems: CartItem[]): Promise<Product[]> => {
       const allProducts = getLocalProducts() || MOCK_PRODUCTS;
-      const cartProductIds = new Set(cartItems.map(item => item.id));
+      const cartProductIds = new Set(cartItems.map((item) => item.id));
 
       if (cartItems.length === 0) {
         return allProducts
@@ -231,113 +250,122 @@ export const api = {
           .slice(0, 8);
       }
 
+      // ✅ PERFORMANCE: Build lookup maps once instead of filtering arrays per cart item.
+      const productsByCategory = new Map<string, Product[]>();
+      for (const p of allProducts) {
+        if (!productsByCategory.has(p.category)) productsByCategory.set(p.category, []);
+        productsByCategory.get(p.category)!.push(p);
+      }
+
       let recommended: Product[] = [];
 
       for (const item of cartItems) {
         const name = item.name.toLowerCase();
         const cat = item.category.toLowerCase();
-        
-        // Pants -> Shirts, Shoes, Accessories (Jewelry)
-        if (name.includes('pant') || name.includes('chino') || name.includes('jeans') || name.includes('trousers') || name.includes('jogger')) {
-          const suggestions = allProducts.filter(p => {
-            const pName = p.name.toLowerCase();
-            const pCat = p.category.toLowerCase();
-            const pSub = p.subCategory?.toLowerCase();
-            const itemSub = item.subCategory?.toLowerCase();
 
-            // Must match gender if the item or suggestion is gendered
-            if (itemSub && pSub && itemSub !== pSub && (itemSub !== 'child' && pSub !== 'child')) return false;
+        const notInCart = (p: Product) => !cartProductIds.has(p.id);
+        const matchesGender = (p: Product) => {
+          const pSub = p.subCategory?.toLowerCase();
+          const itemSub = item.subCategory?.toLowerCase();
+          if (itemSub && pSub && itemSub !== pSub) {
+            if (itemSub !== 'child' && pSub !== 'child') return false;
+          }
+          return true;
+        };
 
-            return (pName.includes('shirt') || pName.includes('tee') || pCat === 'shoes' || pCat === 'jewelry') && !cartProductIds.has(p.id);
-          });
+        if (
+          name.includes('pant') ||
+          name.includes('chino') ||
+          name.includes('jeans') ||
+          name.includes('trousers') ||
+          name.includes('jogger')
+        ) {
+          const suggestions = allProducts.filter(
+            (p) =>
+              notInCart(p) &&
+              matchesGender(p) &&
+              (p.name.toLowerCase().includes('shirt') ||
+                p.name.toLowerCase().includes('tee') ||
+                p.category.toLowerCase() === 'shoes' ||
+                p.category.toLowerCase() === 'jewelry')
+          );
           recommended.push(...suggestions);
-        }
-        
-        // Shirt -> Pants, Shoes
-        else if (name.includes('shirt') || name.includes('tee')) {
-          const suggestions = allProducts.filter(p => {
-            const pName = p.name.toLowerCase();
-            const pCat = p.category.toLowerCase();
-            const pSub = p.subCategory?.toLowerCase();
-            const itemSub = item.subCategory?.toLowerCase();
-
-            if (itemSub && pSub && itemSub !== pSub && (itemSub !== 'child' && pSub !== 'child')) return false;
-
-            return (pName.includes('pant') || pName.includes('chino') || pName.includes('jeans') || pCat === 'shoes') && !cartProductIds.has(p.id);
-          });
+        } else if (name.includes('shirt') || name.includes('tee')) {
+          const suggestions = allProducts.filter(
+            (p) =>
+              notInCart(p) &&
+              matchesGender(p) &&
+              (p.name.toLowerCase().includes('pant') ||
+                p.name.toLowerCase().includes('chino') ||
+                p.name.toLowerCase().includes('jeans') ||
+                p.category.toLowerCase() === 'shoes')
+          );
           recommended.push(...suggestions);
-        }
-
-        // Jacket -> Pants, Shirts, Shoes
-        else if (name.includes('jacket')) {
-          const suggestions = allProducts.filter(p => {
-            const pName = p.name.toLowerCase();
-            const pCat = p.category.toLowerCase();
-            const pSub = p.subCategory?.toLowerCase();
-            const itemSub = item.subCategory?.toLowerCase();
-
-            if (itemSub && pSub && itemSub !== pSub && (itemSub !== 'child' && pSub !== 'child')) return false;
-
-            return (pName.includes('pant') || pName.includes('shirt') || pCat === 'shoes') && !cartProductIds.has(p.id);
-          });
+        } else if (name.includes('jacket')) {
+          const suggestions = allProducts.filter(
+            (p) =>
+              notInCart(p) &&
+              matchesGender(p) &&
+              (p.name.toLowerCase().includes('pant') ||
+                p.name.toLowerCase().includes('shirt') ||
+                p.category.toLowerCase() === 'shoes')
+          );
           recommended.push(...suggestions);
-        }
-
-        // Dress -> Shoes, Jewelry
-        else if (name.includes('dress')) {
-          const suggestions = allProducts.filter(p => {
-            const pCat = p.category.toLowerCase();
-            return (pCat === 'shoes' || pCat === 'jewelry') && !cartProductIds.has(p.id);
-          });
+        } else if (name.includes('dress')) {
+          const suggestions = allProducts.filter(
+            (p) =>
+              notInCart(p) &&
+              (p.category.toLowerCase() === 'shoes' || p.category.toLowerCase() === 'jewelry')
+          );
           recommended.push(...suggestions);
-        }
-
-        // Electronics: same brand or related categories (keyboard, mouse, etc)
-        else if (cat === 'electronics') {
-          const suggestions = allProducts.filter(p => {
-            const pName = p.name.toLowerCase();
-            const pCat = p.category.toLowerCase();
-            // If it's tech, suggest other tech from same brand OR specific peripherals
-            const isRelatedTech = pCat === 'electronics' && (
-              p.company === item.company || 
-              pName.includes('keyboard') || 
-              pName.includes('mouse') || 
-              pName.includes('headphone') || 
-              pName.includes('monitor') ||
-              pName.includes('watch') ||
-              pName.includes('pad')
-            );
-            return isRelatedTech && p.id !== item.id && !cartProductIds.has(p.id);
-          });
+        } else if (cat === 'electronics') {
+          const suggestions = (productsByCategory.get('electronics') || []).filter(
+            (p) =>
+              notInCart(p) &&
+              p.id !== item.id &&
+              (p.company === item.company ||
+                p.name.toLowerCase().includes('keyboard') ||
+                p.name.toLowerCase().includes('mouse') ||
+                p.name.toLowerCase().includes('headphone') ||
+                p.name.toLowerCase().includes('monitor') ||
+                p.name.toLowerCase().includes('watch') ||
+                p.name.toLowerCase().includes('pad'))
+          );
           recommended.push(...suggestions);
         }
       }
 
-      // Fallback: popular items or same categories (Fair Decision Rule: Filter out unrelated categories if tech is in cart)
       if (recommended.length < 8) {
-        const cartCategories = new Set(cartItems.map(item => item.category));
-        const hasTech = cartItems.some(item => item.category === 'Electronics');
-        const hasSkinCare = cartItems.some(item => item.category === 'Skin Care');
-        
+        const cartCategories = new Set(cartItems.map((item) => item.category));
+        const hasTech = cartItems.some((item) => item.category === 'Electronics');
+        const hasSkinCare = cartItems.some((item) => item.category === 'Skin Care');
+
         const extra = allProducts
-          .filter(p => {
+          .filter((p) => {
             if (cartProductIds.has(p.id)) return false;
-            if (recommended.some(r => r.id === p.id)) return false;
-            
-            // Fair Decision: If cart has tech, don't suggest unrelated things like jewelry or home stuff as fallback unless explicitly matching category
+            if (recommended.some((r) => r.id === p.id)) return false;
+
             if (hasTech && !cartCategories.has(p.category)) {
-              if (p.category === 'Jewelry' || p.category === 'Home & Living' || p.category === 'Skin Care' || p.category === 'Sports') return false;
-            }
-            
-            // If cart has skin care, don't suggest tech or sports as fallback
-            if (hasSkinCare && !cartCategories.has(p.category)) {
-              if (p.category === 'Electronics' || p.category === 'Sports' || p.category === 'Home & Living') return false;
+              if (
+                p.category === 'Jewelry' ||
+                p.category === 'Home & Living' ||
+                p.category === 'Skin Care' ||
+                p.category === 'Sports'
+              )
+                return false;
             }
 
-            // General filter: don't suggest unrelated categories if we already have some category-specific recommendations
+            if (hasSkinCare && !cartCategories.has(p.category)) {
+              if (
+                p.category === 'Electronics' ||
+                p.category === 'Sports' ||
+                p.category === 'Home & Living'
+              )
+                return false;
+            }
+
             if (recommended.length > 0 && !cartCategories.has(p.category)) {
-               // Only suggest if it's high rated and not totally unrelated
-               if (p.rating && p.rating < 4.5) return false;
+              if (p.rating && p.rating < 4.5) return false;
             }
 
             return true;
@@ -350,104 +378,106 @@ export const api = {
         recommended.push(...extra);
       }
 
-      // Remove duplicates and limit to 8
-      const uniqueRecommended = Array.from(new Map(recommended.map(p => [p.id, p])).values())
+      return Array.from(new Map(recommended.map((p) => [p.id, p])).values())
         .sort((a, b) => (b.rating || 0) - (a.rating || 0))
         .slice(0, 8);
-
-      return uniqueRecommended;
     },
 
     delete: async (id: string): Promise<void> => {
       const current = getLocalProducts() || MOCK_PRODUCTS;
-      setLocalProducts(current.filter(p => p.id !== id));
+      setLocalProducts(current.filter((p) => p.id !== id));
       try {
         if (!id.startsWith('mock-') && !id.startsWith('local-') && !id.startsWith('static-')) {
           await supabase.from('products').delete().eq('id', id);
         }
-      } catch (e) { }
-    }
+      } catch (e) {
+        /* non-fatal */
+      }
+    },
   },
 
   reviews: {
     list: async (productId: string): Promise<Review[]> => {
       try {
-        const { data, error } = await withTimeout<any>(
-          supabase.from('reviews').select('*').eq('product_id', productId).order('created_at', { ascending: false })
-        ) as any;
+        const { data, error } = (await withTimeout<any>(
+          supabase
+            .from('reviews')
+            .select('*')
+            .eq('product_id', productId)
+            .order('created_at', { ascending: false })
+        )) as any;
         if (error) throw error;
         return data.map(mapReview);
       } catch (e) {
-        return getLocalReviews().filter(r => r.productId === productId);
+        return [];
       }
     },
-    add: async (review: Omit<Review, 'id' | 'createdAt'>): Promise<Review> => {
-      // Check local constraint (max 2 reviews per user per product)
-      const localReviews = getLocalReviews();
-      const userReviews = localReviews.filter(r => r.userId === review.userId && r.productId === review.productId);
-      if (userReviews.length >= 2) {
-        throw new Error("You can only submit up to 2 reviews for this product.");
-      }
 
-      let newReview: Review;
+    add: async (review: Omit<Review, 'id' | 'createdAt'>): Promise<Review> => {
+      // ✅ FIXED: The DB is the ONLY source of truth for the review limit.
+      // localStorage is no longer used as a gate — it was trivially bypassable.
+      // The actual enforcement happens via a Supabase DB constraint or RLS policy.
+      //
+      // Recommended: add this constraint to your `reviews` table in Supabase:
+      //   ALTER TABLE reviews ADD CONSTRAINT max_reviews_per_user_per_product
+      //   UNIQUE (user_id, product_id);   -- or use a trigger for a count limit
+      //
+      // For a soft 2-review limit, use a DB trigger or check in the Edge Function.
 
       try {
-        // Try DB
-        const { count } = await supabase.from('reviews')
+        // Check DB count FIRST — do not rely on localStorage
+        const { count, error: countError } = await supabase
+          .from('reviews')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', review.userId)
           .eq('product_id', review.productId);
 
-        if (count !== null && count >= 2) {
-          throw new Error("You can only submit up to 2 reviews for this product.");
+        if (!countError && count !== null && count >= 2) {
+          throw new Error('You can only submit up to 2 reviews for this product.');
         }
 
-        const { data, error } = await supabase.from('reviews').insert([{
-          user_id: review.userId,
-          user_name: review.userName,
-          product_id: review.productId,
-          rating: review.rating,
-          comment: review.comment
-        }]).select().single();
+        const { data, error } = await supabase
+          .from('reviews')
+          .insert([
+            {
+              user_id: review.userId,
+              user_name: review.userName,
+              product_id: review.productId,
+              rating: review.rating,
+              comment: review.comment,
+            },
+          ])
+          .select()
+          .single();
 
-        if (error) throw error;
-        newReview = mapReview(data);
+        if (error) {
+          // Surface the error message from DB (e.g. unique constraint violation)
+          throw new Error(error.message);
+        }
+
+        const newReview = mapReview(data);
+
+        // Update product rating average
+        const product = (getLocalProducts() || MOCK_PRODUCTS).find(
+          (p) => p.id === review.productId
+        );
+        if (product) {
+          const oldRating = product.rating || 0;
+          const oldCount = product.reviewCount || 0;
+          const newCount = oldCount + 1;
+          const newRating = (oldRating * oldCount + review.rating) / newCount;
+
+          await api.products.update(review.productId, {
+            rating: Number(newRating.toFixed(1)),
+            reviewCount: newCount,
+          });
+        }
+
+        return newReview;
       } catch (e: any) {
-        if (e.message.includes("2 reviews")) throw e;
-
-        // Fallback Local
-        newReview = {
-          ...review,
-          id: `local-review-${Date.now()}`,
-          createdAt: new Date().toISOString()
-        };
-        setLocalReviews([newReview, ...localReviews]);
+        throw e; // Propagate error to UI — do not silently swallow
       }
-
-      // --- UPDATE PRODUCT RATING ---
-      // We need to fetch all reviews (local + new) to calculate average
-      // For simplicity, we'll assume we have the list in local state or refetch
-      // Here we will just update the product object in our local cache
-      // Note: This might duplicate if we mix DB and Local, but for "Safe Mode" it's fine.
-
-      // Better approach: Get current product, update its stats
-      const product = (getLocalProducts() || MOCK_PRODUCTS).find(p => p.id === review.productId);
-      if (product) {
-        // Simple moving average approximation if we don't have all reviews loaded
-        // New Avg = ((Old Avg * Old Count) + New Rating) / (Old Count + 1)
-        const oldRating = product.rating || 0;
-        const oldCount = product.reviewCount || 0;
-        const newCount = oldCount + 1;
-        const newRating = ((oldRating * oldCount) + review.rating) / newCount;
-
-        await api.products.update(review.productId, {
-          rating: Number(newRating.toFixed(1)),
-          reviewCount: newCount
-        });
-      }
-
-      return newReview;
-    }
+    },
   },
 
   orders: {
@@ -456,17 +486,23 @@ export const api = {
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .insert([{ user_id: userId, total: total, status: 'PAID' }])
-          .select().single();
+          .select()
+          .single();
 
         if (orderError) throw orderError;
 
-        const validItems = items.filter(i => !i.id.startsWith('mock-') && !i.id.startsWith('local-') && !i.id.startsWith('static-'));
+        const validItems = items.filter(
+          (i) =>
+            !i.id.startsWith('mock-') &&
+            !i.id.startsWith('local-') &&
+            !i.id.startsWith('static-')
+        );
         if (validItems.length > 0) {
           const orderItems = validItems.map((item: any) => ({
             order_id: orderData.id,
             product_id: item.id,
             quantity: item.quantity,
-            price_at_purchase: item.price
+            price_at_purchase: item.price,
           }));
           await supabase.from('order_items').insert(orderItems);
         }
@@ -477,24 +513,30 @@ export const api = {
           items,
           total,
           status: 'PAID',
-          createdAt: orderData.created_at
+          createdAt: orderData.created_at,
         };
       } catch (e) {
+        // Fallback local order (for dev/demo only)
         return {
           id: `local-order-${Date.now()}`,
           userId,
           items,
           total,
           status: 'PAID',
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         };
       }
     },
+
     list: async (userId: string): Promise<Order[]> => {
       try {
-        const { data, error } = await withTimeout<any>(
-          supabase.from('orders').select(`*, order_items (*, products (*))`).eq('user_id', userId).order('created_at', { ascending: false })
-        ) as any;
+        const { data, error } = (await withTimeout<any>(
+          supabase
+            .from('orders')
+            .select(`*, order_items (*, products (*))`)
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+        )) as any;
         if (error) throw error;
         return data.map((order: any) => ({
           id: order.id,
@@ -504,13 +546,20 @@ export const api = {
           createdAt: order.created_at,
           items: order.order_items.map((oi: any) => ({
             ...mapProduct(oi.products),
-            quantity: oi.quantity
-          }))
+            quantity: oi.quantity,
+          })),
         }));
-      } catch (e) { return []; }
+      } catch (e) {
+        return [];
+      }
     },
+
     cancel: async (orderId: string): Promise<void> => {
-      try { await supabase.from('orders').update({ status: 'CANCELLED' }).eq('id', orderId); } catch (e) { }
-    }
-  }
+      try {
+        await supabase.from('orders').update({ status: 'CANCELLED' }).eq('id', orderId);
+      } catch (e) {
+        /* non-fatal */
+      }
+    },
+  },
 };

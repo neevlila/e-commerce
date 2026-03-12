@@ -52,26 +52,24 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         try {
-          // Check for hardcoded admin email
-          const isAdmin = session.user.email === 'ecommerce@gmail.com';
-
+          // ✅ FIXED: Role is read ONLY from the database — no hardcoded email checks.
+          // To make a user admin, update their role in the Supabase `profiles` table:
+          //   UPDATE profiles SET role = 'ADMIN' WHERE id = '<user-id>';
           const profile = await api.auth.getProfile(session.user.id);
 
           if (profile) {
-            setUser({
-              ...profile,
-              role: isAdmin ? 'ADMIN' : profile.role
-            });
+            setUser(profile);
           } else {
+            // New user — profile not yet created (e.g., first Google login)
             setUser({
               id: session.user.id,
               email: session.user.email!,
               name: session.user.user_metadata.full_name || 'User',
-              role: isAdmin ? 'ADMIN' : 'USER'
+              role: 'USER', // Always default to USER — never elevate on the client
             });
           }
         } catch (error) {
-          console.error("Error fetching profile:", error);
+          console.error('Error fetching profile:', error);
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -137,10 +135,13 @@ function App() {
         </main>
         <CartRecommendationModal />
         <Footer />
-        <Toaster position="bottom-right" toastOptions={{
-          className: 'text-sm font-medium dark:bg-slate-800 dark:text-white dark:border dark:border-slate-700',
-          duration: 3000,
-        }} />
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            className: 'text-sm font-medium dark:bg-slate-800 dark:text-white dark:border dark:border-slate-700',
+            duration: 3000,
+          }}
+        />
       </div>
     </Router>
   );

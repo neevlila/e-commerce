@@ -188,7 +188,7 @@ function WishlistCard({
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
-export const WishlistPage = () => {
+export const WishlistContent = () => {
   const { items, folders, createFolder, deleteFolder, renameFolder, clearWishlist } = useWishlistStore();
 
   // Active folder: null = "All items", string = folder id
@@ -523,6 +523,14 @@ export const WishlistPage = () => {
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+export const WishlistPage = () => {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <WishlistContent />
     </div>
   );
 };
