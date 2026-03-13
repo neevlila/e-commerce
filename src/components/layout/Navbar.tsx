@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, LogOut, Loader2, Search, Menu, X, ShoppingBag, Home, Package2, LayoutDashboard, Heart, MessageCircle, Send } from 'lucide-react';
+import { User, LogOut, Loader2, Search, Menu, X, Home, Package2, LayoutDashboard, Heart, MessageCircle, Send, ShoppingCart } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 import { useWishlistStore } from '../../store/wishlistStore';
@@ -112,20 +112,15 @@ export const Navbar = () => {
   return (
     <nav
       className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled
-          ? 'bg-white dark:bg-slate-900 shadow-md border-b border-border'
-          : 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-border/50'
+        ? 'bg-white dark:bg-slate-900 shadow-md border-b border-border'
+        : 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-border/50'
         }`}
     >
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-2 md:gap-4">
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-2 group flex-shrink-0">
-          <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-lg p-1.5 text-white group-hover:shadow-lg group-hover:shadow-blue-500/30 transition-all duration-300">
-            <ShoppingBag className="h-5 w-5" />
-          </div>
-          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 hidden sm:block tracking-tight">
-            StyleHub
-          </span>
-          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 sm:hidden">
+          <img src="/StyleHub_logo.png" alt="StyleHub" className="h-8 md:h-10 w-auto group-hover:scale-105 transition-transform duration-300" />
+          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 tracking-tight whitespace-nowrap flex-shrink-0">
             StyleHub
           </span>
         </Link>

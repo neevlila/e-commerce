@@ -7,7 +7,7 @@ import { SEOHead } from '../components/seo/SEOHead';
 import {
   Package, Calendar, Loader2, User as UserIcon,
   ArrowLeft, X,
-  Heart, MapPin, CreditCard, Bell, ChevronRight,
+  MapPin, CreditCard, Bell, ChevronRight,
   LogOut, ShieldCheck, Power, User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -798,25 +798,27 @@ const CardsSection = ({ user, updateProfile }: { user: any, updateProfile: any }
               </select>
             </div>
           </div>
-          <Button onClick={handleAdd} className="w-full">Save Card Details</Button>
+          <Button onClick={handleAdd} className="w-full">Save Card</Button>
         </div>
       )}
 
       <div className="space-y-4">
-        {(user.cardDetails || []).map((c: any) => (
-          <div key={c.id} className="border border-border/50 rounded-sm p-6 flex justify-between items-center bg-white dark:bg-slate-800">
-            <div className="flex items-center gap-4">
-              <div className="h-10 w-10 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center text-blue-600 font-bold italic">
-                {c.brand[0]}
+        {(user.cardDetails || []).map((card: any) => (
+          <div key={card.id} className="border border-border/50 rounded-sm p-6 relative bg-white dark:bg-slate-800">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-12 bg-gray-100 dark:bg-slate-700/50 rounded flex items-center justify-center font-bold text-[10px] uppercase">
+                  {card.brand}
+                </div>
+                <div>
+                  <p className="font-bold text-foreground">•••• •••• •••• {card.last4}</p>
+                  <p className="text-xs text-muted-foreground">{card.holderName}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-bold text-foreground">{c.brand} ending in {c.last4}</p>
-                <p className="text-xs text-muted-foreground">{c.holderName} | Exp: {c.expMonth}/{c.expYear}</p>
-              </div>
+              <button onClick={() => handleRemove(card.id)} className="text-muted-foreground hover:text-red-600 p-2">
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
-            <button onClick={() => handleRemove(c.id)} className="text-muted-foreground hover:text-red-600 p-2">
-              <Trash2 className="h-4 w-4" />
-            </button>
           </div>
         ))}
         {(!user.cardDetails || user.cardDetails.length === 0) && !showAdd && (
