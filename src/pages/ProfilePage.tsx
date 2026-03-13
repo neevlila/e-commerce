@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { Order, Product } from '../types';
 import { formatPrice } from '../lib/utils';
 import { SEOHead } from '../components/seo/SEOHead';
-import { 
-  Package, Calendar, Loader2, User as UserIcon, 
-  ArrowLeft, XCircle, Edit2, Save, X, 
+import {
+  Package, Calendar, Loader2, User as UserIcon,
+  ArrowLeft, X,
   Heart, MapPin, CreditCard, Bell, ChevronRight,
-  LogOut, ShieldCheck, Power, Settings, User
+  LogOut, ShieldCheck, Power, User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../components/ui/button';
@@ -36,25 +36,25 @@ export const ProfilePage = () => {
   const location = useLocation();
 
   // Active section state
-  const [activeSection, setActiveSection] = useState<Section>('profile');
+  const [activeSection, setActiveSection] = useState<Section | null>(null);
 
   useEffect(() => {
     if (user) {
       setEditName(user.name);
       setLoading(true);
-      
+
       const fetchData = async () => {
         try {
           const fetchedOrders = await api.orders.list(user.id);
           setOrders(fetchedOrders);
-          
+
           // Fetch user's reviews
           const { data: reviewsData, error: reviewsError } = await supabase
             .from('reviews')
             .select('*')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
-            
+
           if (!reviewsError && reviewsData) {
             const mapped = reviewsData.map(r => ({
               id: r.id,
@@ -89,7 +89,7 @@ export const ProfilePage = () => {
           setLoading(false);
         }
       };
-      
+
       fetchData();
     }
   }, [user]);
@@ -100,6 +100,8 @@ export const ProfilePage = () => {
     const section = params.get('section') as Section;
     if (section && ['orders', 'profile', 'wishlist', 'addresses', 'payments', 'notifications', 'reviews', 'upi'].includes(section)) {
       setActiveSection(section);
+    } else {
+      setActiveSection(null);
     }
   }, [location.search]);
 
@@ -129,31 +131,31 @@ export const ProfilePage = () => {
 
   const handleUpdateProfile = async () => {
     if (!editName.trim()) {
-        toast.error("Name cannot be empty");
-        return;
+      toast.error("Name cannot be empty");
+      return;
     }
-    
+
     try {
-        updateProfile({ name: editName });
-        setIsEditing(false);
-        toast.success("Profile updated successfully");
+      updateProfile({ name: editName });
+      setIsEditing(false);
+      toast.success("Profile updated successfully");
     } catch (error) {
-        toast.error("Failed to update profile");
+      toast.error("Failed to update profile");
     }
   };
 
   if (!user) return null;
 
   return (
-    <div className="bg-gray-50 dark:bg-slate-900/50 min-h-screen py-8 md:py-12">
-      <SEOHead title={`My Profile | ${activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}`} />
-      
+    <div className="bg-gray-50 dark:bg-slate-900/50 min-h-screen py-4 md:py-12">
+      <SEOHead title={`My Profile | ${activeSection ? activeSection.charAt(0).toUpperCase() + activeSection.slice(1) : 'Menu'}`} />
+
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="flex flex-col lg:flex-row gap-8">
-          
+
           {/* Flipkart Style Sidebar */}
-          <aside className="w-full lg:w-[300px] flex-shrink-0 space-y-4">
-            
+          <aside className={`w-full lg:w-[300px] flex-shrink-0 space-y-4 ${activeSection ? 'hidden lg:block' : 'block'}`}>
+
             {/* User Info Card */}
             <div className="bg-white dark:bg-slate-800 p-4 rounded-sm shadow-sm flex items-center gap-4 border border-border/50">
               <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
@@ -167,9 +169,9 @@ export const ProfilePage = () => {
 
             {/* Navigation Menu */}
             <div className="bg-white dark:bg-slate-800 rounded-sm shadow-sm border border-border/50 overflow-hidden">
-              
+
               {/* My Orders Section */}
-              <button 
+              <button
                 onClick={() => handleSectionChange('orders')}
                 className={`w-full flex items-center justify-between p-4 border-b border-border/50 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors group ${activeSection === 'orders' ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
               >
@@ -183,19 +185,19 @@ export const ProfilePage = () => {
               {/* Account Settings */}
               <div className="border-b border-border/50">
                 <div className="p-4 flex items-center gap-4 text-muted-foreground">
-                  <User className="h-5 w-5 text-blue-600" />
+                  <User className={`h-5 w-5 ${(activeSection === 'profile' || activeSection === 'addresses') ? 'text-blue-600' : 'text-muted-foreground/60'}`} />
                   <span className="font-bold uppercase text-sm text-muted-foreground/60">Account Settings</span>
                 </div>
                 <div className="pb-2">
-                  <SidebarItem 
-                    label="Profile Information" 
-                    active={activeSection === 'profile'} 
-                    onClick={() => handleSectionChange('profile')} 
+                  <SidebarItem
+                    label="Profile Information"
+                    active={activeSection === 'profile'}
+                    onClick={() => handleSectionChange('profile')}
                   />
-                  <SidebarItem 
-                    label="Manage Addresses" 
-                    active={activeSection === 'addresses'} 
-                    onClick={() => handleSectionChange('addresses')} 
+                  <SidebarItem
+                    label="Manage Addresses"
+                    active={activeSection === 'addresses'}
+                    onClick={() => handleSectionChange('addresses')}
                   />
                 </div>
               </div>
@@ -203,19 +205,19 @@ export const ProfilePage = () => {
               {/* Payments Section */}
               <div className="border-b border-border/50">
                 <div className="p-4 flex items-center gap-4 text-muted-foreground">
-                  <CreditCard className="h-5 w-5 text-blue-600" />
+                  <CreditCard className={`h-5 w-5 ${(activeSection === 'payments' || activeSection === 'upi') ? 'text-blue-600' : 'text-muted-foreground/60'}`} />
                   <span className="font-bold uppercase text-sm text-muted-foreground/60">Payments</span>
                 </div>
                 <div className="pb-2">
-                  <SidebarItem 
-                    label="Saved Cards" 
-                    active={activeSection === 'payments'} 
-                    onClick={() => handleSectionChange('payments')} 
+                  <SidebarItem
+                    label="Saved Cards"
+                    active={activeSection === 'payments'}
+                    onClick={() => handleSectionChange('payments')}
                   />
-                  <SidebarItem 
-                    label="Saved UPI" 
-                    active={activeSection === 'upi'} 
-                    onClick={() => handleSectionChange('upi' as any)} 
+                  <SidebarItem
+                    label="Saved UPI"
+                    active={activeSection === 'upi'}
+                    onClick={() => handleSectionChange('upi' as any)}
                   />
                 </div>
               </div>
@@ -223,30 +225,30 @@ export const ProfilePage = () => {
               {/* My Stuff Section */}
               <div className="border-b border-border/50">
                 <div className="p-4 flex items-center gap-4 text-muted-foreground">
-                  <Power className="h-5 w-5 text-blue-600" />
+                  <Power className={`h-5 w-5 ${['wishlist', 'reviews', 'notifications'].includes(activeSection as string) ? 'text-blue-600' : 'text-muted-foreground/60'}`} />
                   <span className="font-bold uppercase text-sm text-muted-foreground/60">My Stuff</span>
                 </div>
                 <div className="pb-2">
-                  <SidebarItem 
-                    label="My Wishlist" 
-                    active={activeSection === 'wishlist'} 
-                    onClick={() => handleSectionChange('wishlist')} 
+                  <SidebarItem
+                    label="My Wishlist"
+                    active={activeSection === 'wishlist'}
+                    onClick={() => handleSectionChange('wishlist')}
                   />
-                  <SidebarItem 
-                    label="My Reviews & Ratings" 
+                  <SidebarItem
+                    label="My Reviews & Ratings"
                     active={activeSection === 'reviews'}
                     onClick={() => handleSectionChange('reviews')}
                   />
-                  <SidebarItem 
-                    label="All Notifications" 
-                    active={activeSection === 'notifications'} 
-                    onClick={() => handleSectionChange('notifications')} 
+                  <SidebarItem
+                    label="All Notifications"
+                    active={activeSection === 'notifications'}
+                    onClick={() => handleSectionChange('notifications')}
                   />
                 </div>
               </div>
 
               {/* Logout Button */}
-              <button 
+              <button
                 onClick={handleLogout}
                 className="w-full flex items-center gap-4 p-4 hover:bg-red-50 dark:hover:bg-red-900/10 text-muted-foreground hover:text-red-600 transition-colors group"
               >
@@ -257,7 +259,7 @@ export const ProfilePage = () => {
           </aside>
 
           {/* Main Content Area */}
-          <main className="flex-1 bg-white dark:bg-slate-800 rounded-sm shadow-sm border border-border/50 min-h-[600px] overflow-hidden">
+          <main className={`flex-1 bg-white dark:bg-slate-800 rounded-sm shadow-sm border border-border/50 min-h-[600px] overflow-hidden ${!activeSection ? 'hidden lg:block' : 'block'}`}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeSection}
@@ -265,23 +267,34 @@ export const ProfilePage = () => {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
-                className="p-6 md:p-8"
+                className="p-4 md:p-8"
               >
-                {activeSection === 'profile' && (
-                  <ProfileInfoSection 
-                    user={user} 
-                    isEditing={isEditing} 
-                    editName={editName} 
+                {/* Mobile Back Button */}
+                {activeSection && (
+                  <button
+                    onClick={() => navigate('/profile')}
+                    className="lg:hidden flex items-center gap-2 text-blue-600 mb-6 font-bold text-sm"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Menu
+                  </button>
+                )}
+
+                {(activeSection === 'profile' || (!activeSection)) && (
+                  <ProfileInfoSection
+                    user={user}
+                    isEditing={isEditing}
+                    editName={editName}
                     setEditName={setEditName}
                     setIsEditing={setIsEditing}
                     handleUpdateProfile={handleUpdateProfile}
                   />
                 )}
                 {activeSection === 'orders' && (
-                  <OrdersSection 
-                    orders={orders} 
-                    loading={loading} 
-                    handleCancelOrder={handleCancelOrder} 
+                  <OrdersSection
+                    orders={orders}
+                    loading={loading}
+                    handleCancelOrder={handleCancelOrder}
                   />
                 )}
                 {activeSection === 'wishlist' && (
@@ -330,7 +343,7 @@ export const ProfilePage = () => {
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
 const SidebarItem = ({ label, active, onClick }: { label: string, active?: boolean, onClick?: () => void }) => (
-  <button 
+  <button
     onClick={onClick}
     className={`w-full text-left px-14 py-2 text-sm transition-colors ${active ? 'bg-blue-50/50 dark:bg-blue-900/10 text-blue-600 font-bold' : 'text-muted-foreground hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:text-blue-600'}`}
   >
@@ -343,7 +356,7 @@ const ProfileInfoSection = ({ user, isEditing, editName, setEditName, setIsEditi
     <div className="flex items-center gap-4 mb-8">
       <h2 className="text-xl font-bold text-foreground">Personal Information</h2>
       {!isEditing && (
-        <button 
+        <button
           onClick={() => setIsEditing(true)}
           className="text-blue-600 text-sm font-bold hover:underline"
         >
@@ -358,8 +371,8 @@ const ProfileInfoSection = ({ user, isEditing, editName, setEditName, setIsEditi
           <label className="text-sm text-muted-foreground">Full Name</label>
           {isEditing ? (
             <div className="flex gap-2">
-              <Input 
-                value={editName} 
+              <Input
+                value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 className="h-11"
                 autoFocus
@@ -391,7 +404,7 @@ const ProfileInfoSection = ({ user, isEditing, editName, setEditName, setIsEditi
           </div>
         </div>
       </div>
-      
+
       <div className="pt-8 border-t border-border/50">
         <h3 className="font-bold text-foreground mb-4">FAQs</h3>
         <div className="space-y-4">
@@ -441,16 +454,16 @@ const OrdersSection = ({ orders, loading, handleCancelOrder }: any) => (
               </div>
               <div className="flex items-center gap-4">
                 <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
-                  ${order.status === 'PAID' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 
+                  ${order.status === 'PAID' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
                     order.status === 'CANCELLED' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'}
+                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'}
                 `}>
                   {order.status}
                 </span>
                 <span className="font-bold text-foreground">{formatPrice(order.total)}</span>
               </div>
             </div>
-            
+
             <div className="space-y-2 mb-4">
               {order.items.map((item: any, idx: number) => (
                 <div key={idx} className="flex items-center gap-3 text-sm">
@@ -464,7 +477,7 @@ const OrdersSection = ({ orders, loading, handleCancelOrder }: any) => (
 
             {(order.status === 'PAID' || order.status === 'PENDING') && (
               <div className="flex justify-end pt-3 border-t border-border/30">
-                <button 
+                <button
                   onClick={() => handleCancelOrder(order.id)}
                   className="text-xs font-bold text-red-600 hover:underline"
                 >
@@ -625,14 +638,14 @@ const AddressesSection = ({ user, updateProfile }: { user: any, updateProfile: a
       {showAdd && (
         <div className="bg-gray-50 dark:bg-slate-900/50 p-6 rounded-sm border border-border mb-8 space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="First Name" value={newAddr.firstName} onChange={e => setNewAdd({...newAddr, firstName: e.target.value})} />
-            <Input label="Last Name" value={newAddr.lastName} onChange={e => setNewAdd({...newAddr, lastName: e.target.value})} />
+            <Input label="First Name" value={newAddr.firstName} onChange={e => setNewAdd({ ...newAddr, firstName: e.target.value })} />
+            <Input label="Last Name" value={newAddr.lastName} onChange={e => setNewAdd({ ...newAddr, lastName: e.target.value })} />
           </div>
-          <Input label="Address" value={newAddr.address} onChange={e => setNewAdd({...newAddr, address: e.target.value})} />
+          <Input label="Address" value={newAddr.address} onChange={e => setNewAdd({ ...newAddr, address: e.target.value })} />
           <div className="grid grid-cols-3 gap-4">
-            <Input label="City" value={newAddr.city} onChange={e => setNewAdd({...newAddr, city: e.target.value})} />
-            <Input label="State" value={newAddr.state} onChange={e => setNewAdd({...newAddr, state: e.target.value})} />
-            <Input label="Pincode" value={newAddr.pincode} onChange={e => setNewAdd({...newAddr, pincode: e.target.value})} />
+            <Input label="City" value={newAddr.city} onChange={e => setNewAdd({ ...newAddr, city: e.target.value })} />
+            <Input label="State" value={newAddr.state} onChange={e => setNewAdd({ ...newAddr, state: e.target.value })} />
+            <Input label="Pincode" value={newAddr.pincode} onChange={e => setNewAdd({ ...newAddr, pincode: e.target.value })} />
           </div>
           <Button onClick={handleAdd} className="w-full">Save Address</Button>
         </div>
@@ -773,12 +786,12 @@ const CardsSection = ({ user, updateProfile }: { user: any, updateProfile: any }
 
       {showAdd && (
         <div className="bg-gray-50 dark:bg-slate-900/50 p-6 rounded-sm border border-border mb-8 space-y-4">
-          <Input label="Card Holder Name" value={card.holderName} onChange={e => setCard({...card, holderName: e.target.value})} />
+          <Input label="Card Holder Name" value={card.holderName} onChange={e => setCard({ ...card, holderName: e.target.value })} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Last 4 Digits" maxLength={4} value={card.last4} onChange={e => setCard({...card, last4: e.target.value})} />
+            <Input label="Last 4 Digits" maxLength={4} value={card.last4} onChange={e => setCard({ ...card, last4: e.target.value })} />
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground/80">Card Type</label>
-              <select className="w-full h-11 px-4 rounded-md border border-input bg-background" value={card.brand} onChange={e => setCard({...card, brand: e.target.value})}>
+              <select className="w-full h-11 px-4 rounded-md border border-input bg-background" value={card.brand} onChange={e => setCard({ ...card, brand: e.target.value })}>
                 <option>Visa</option>
                 <option>Mastercard</option>
                 <option>Rupay</option>
