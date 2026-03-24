@@ -41,7 +41,7 @@ export function BookmarkIconButton({
   className,
 }: {
   isSaved?: boolean;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent) => void;
   className?: string;
 }) {
   const [internalSaved, setInternalSaved] = React.useState(false);
@@ -53,7 +53,7 @@ export function BookmarkIconButton({
     e.stopPropagation();
     e.preventDefault();
     if (onClick) {
-      onClick();
+      onClick(e);
     } else {
       setInternalSaved((prev) => !prev);
     }

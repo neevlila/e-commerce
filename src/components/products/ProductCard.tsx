@@ -19,11 +19,13 @@ export const ProductCard = React.memo(({ product }: { product: Product }) => {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     addItem(product);
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     toggleItem(product);
     toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist ❤️');
   };

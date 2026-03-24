@@ -67,7 +67,11 @@ export const useWishlistStore = create<WishlistState>()(
         }
       },
 
-      isWishlisted: (productId) => get().items.some((i) => i.id === productId),
+      isWishlisted: (productId) => {
+        if (!productId) return false;
+        const items = get().items || [];
+        return items.some((i) => String(i.id) === String(productId));
+      },
 
       moveItemToFolder: (productId, folderId) => {
         set({
@@ -115,6 +119,12 @@ export const useWishlistStore = create<WishlistState>()(
         });
       },
     }),
-    { name: 'wishlist-storage-v2' } // bump key so old flat data doesn't conflict
+    {
+      name: 'wishlist-storage-v2',
+      partialize: (state) => ({
+        items: state.items,
+        folders: state.folders,
+      }),
+    }
   )
 );
