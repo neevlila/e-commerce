@@ -5,7 +5,7 @@ import { Order, Product } from '../types';
 import { formatPrice } from '../lib/utils';
 import { SEOHead } from '../components/seo/SEOHead';
 import {
-  Package, Calendar, Loader2, User as UserIcon,
+  Package, Loader2, User as UserIcon,
   ArrowLeft, X,
   MapPin, CreditCard, Bell, ChevronRight,
   LogOut, ShieldCheck, Power, User
@@ -45,8 +45,20 @@ export const ProfilePage = () => {
 
       const fetchData = async () => {
         try {
+          // Clear any stale localStorage order cache
+          Object.keys(localStorage).forEach((key) => {
+            if (key.toLowerCase().includes('order')) {
+              localStorage.removeItem(key);
+            }
+          });
+
           const fetchedOrders = await api.orders.list(user.id);
-          setOrders(fetchedOrders);
+
+          // Filter out orphaned orders (exist in `orders` table but have no items)
+          const validOrders = fetchedOrders.filter(
+            (o: any) => Array.isArray(o.items) && o.items.length > 0
+          );
+          setOrders(validOrders);
 
           // Fetch user's reviews
           const { data: reviewsData, error: reviewsError } = await supabase
@@ -295,6 +307,7 @@ export const ProfilePage = () => {
                     orders={orders}
                     loading={loading}
                     handleCancelOrder={handleCancelOrder}
+                    navigate={navigate}
                   />
                 )}
                 {activeSection === 'wishlist' && (
@@ -422,75 +435,136 @@ const ProfileInfoSection = ({ user, isEditing, editName, setEditName, setIsEditi
   </div>
 );
 
-const OrdersSection = ({ orders, loading, handleCancelOrder }: any) => (
-  <div>
-    <h2 className="text-xl font-bold text-foreground mb-8">My Orders</h2>
-    {loading ? (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+const OrdersSection = ({ orders, loading, handleCancelOrder, navigate }: any) => {
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
       </div>
-    ) : orders.length === 0 ? (
-      <div className="text-center py-16 bg-gray-50 dark:bg-slate-900/50 rounded-sm border border-dashed border-border">
-        <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <p className="text-muted-foreground">No orders found yet.</p>
-        <Button variant="link" className="text-blue-600 mt-2">Start Shopping</Button>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <div className="text-center py-24 bg-white dark:bg-slate-900 rounded-lg border border-border shadow-sm">
+        <Package className="h-20 w-20 mx-auto text-muted-foreground/20 mb-6" />
+        <h3 className="text-xl font-bold text-foreground">No orders found</h3>
+        <p className="text-muted-foreground mb-8 text-sm">You haven't placed any orders yet or they were deleted from the database.</p>
+        <Button 
+          className="px-12 h-11 text-sm font-bold bg-blue-600 hover:bg-blue-700 transition-colors"
+          onClick={() => navigate('/products')}
+        >
+          Start Shopping
+        </Button>
       </div>
-    ) : (
-      <div className="space-y-4">
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between pb-2">
+        <h2 className="text-xl font-black text-foreground tracking-tight">Order History</h2>
+        <span className="text-[10px] bg-blue-50 text-blue-600 dark:bg-blue-900/20 px-3 py-1 rounded-full font-black uppercase tracking-widest">{orders.length} Total Orders</span>
+      </div>
+      
+      <div className="space-y-4 pb-12">
         {orders.map((order: any) => (
-          <div key={order.id} className="border border-border/50 rounded-sm p-4 hover:shadow-md transition-shadow">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400">
-                  <Package className="h-5 w-5" />
+          <div 
+            key={order.id} 
+            className="group bg-white dark:bg-slate-900 border border-border/70 hover:shadow-[0_2px_15px_rgba(0,0,0,0.05)] transition-all duration-300 rounded-sm overflow-hidden"
+          >
+            {/* Horizontal Order Details (Flipkart-Style) */}
+            <div className="divide-y divide-border/20">
+              {order.items.length > 0 ? (
+                order.items.map((item: any, idx: number) => (
+                  <div key={idx} className="flex flex-col md:flex-row gap-6 p-6 cursor-pointer" onClick={() => navigate(`/products/${item.id}`)}>
+                    {/* Image */}
+                    <div className="h-20 w-20 flex-shrink-0 bg-white border border-border/40 rounded-sm p-1 shadow-sm group-hover:shadow-md transition-shadow">
+                      <img 
+                        src={item.imageUrl} 
+                        alt="" 
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                    
+                    {/* Item Info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-foreground group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight mb-1">
+                        {item.name}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest mb-2">{item.category}</p>
+                      <div className="flex items-center gap-4">
+                        <span className="text-base font-black text-foreground">{formatPrice(item.price)}</span>
+                        <span className="text-[11px] text-muted-foreground border-l border-border pl-4">Quantity: {item.quantity}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Status Display */}
+                    <div className="md:w-56 shrink-0 flex flex-col md:items-end justify-start pt-1">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${order.status === 'PAID' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : order.status === 'CANCELLED' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]' : 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]'}`} />
+                        <span className="text-xs font-black text-foreground uppercase tracking-tight">
+                          {order.status === 'PAID' ? 'Delivered successfully' : 
+                          order.status === 'CANCELLED' ? 'Cancelled on request' : 
+                          'Status: ' + order.status}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">
+                        {order.status === 'PAID' ? 'Your order has been delivered.' : 
+                        order.status === 'CANCELLED' ? 'The items were returned to stock.' : 
+                        `Estimated delivery: 3-5 days.`}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-10 text-center bg-gray-50/30 dark:bg-slate-900/40">
+                   <p className="text-[10px] font-black text-red-600/70 uppercase tracking-[0.2em] mb-2 px-4 py-1 bg-red-50 dark:bg-red-900/10 inline-block rounded">Database Sync Needed</p>
+                   <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed mt-2 font-medium">
+                     This order entry exists in the <code className="bg-muted px-1">orders</code> table, but its items were removed.
+                     To fully remove this card, please delete the row from the <b className="text-blue-600 underline cursor-help" title="Go to Supabase Dashboard > Table Editor > orders">orders</b> table in Supabase.
+                   </p>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">Order #{order.id.slice(0, 8)}</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {new Date(order.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
-                  ${order.status === 'PAID' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                    order.status === 'CANCELLED' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'}
-                `}>
-                  {order.status}
-                </span>
-                <span className="font-bold text-foreground">{formatPrice(order.total)}</span>
-              </div>
+              )}
             </div>
 
-            <div className="space-y-2 mb-4">
-              {order.items.map((item: any, idx: number) => (
-                <div key={idx} className="flex items-center gap-3 text-sm">
-                  <img src={item.imageUrl} alt="" className="h-10 w-10 object-cover rounded-sm" />
-                  <p className="text-foreground line-clamp-1 flex-1">
-                    {item.name} <span className="text-muted-foreground">x{item.quantity}</span>
-                  </p>
-                </div>
-              ))}
+            {/* Footer Row (Order Summary) */}
+            <div className="bg-gray-50/50 dark:bg-slate-800/30 px-6 py-3 border-t border-border/30 flex flex-wrap justify-between items-center gap-4">
+               <div className="flex items-center gap-6">
+                 <div className="flex items-center gap-2">
+                    <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">Order ID</span>
+                    <span className="text-[11px] font-bold text-foreground/80 font-mono">#{order.id.slice(0, 10).toUpperCase()}</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                    <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">Date</span>
+                    <span className="text-[11px] font-bold text-foreground/80">{new Date(order.createdAt).toLocaleDateString()}</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                    <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">Payed</span>
+                    <span className="text-base font-black text-blue-600">{formatPrice(order.total)}</span>
+                 </div>
+               </div>
+               
+               {/* Show cancel button ONLY if order has items AND is not already cancelled */}
+               {order.items.length > 0 && (order.status === 'PAID' || order.status === 'PENDING') && (
+                 <Button 
+                   variant="ghost" 
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     handleCancelOrder(order.id);
+                   }}
+                   className="h-8 text-[10px] font-black text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 uppercase tracking-wider"
+                 >
+                   Cancel Order
+                 </Button>
+               )}
             </div>
-
-            {(order.status === 'PAID' || order.status === 'PENDING') && (
-              <div className="flex justify-end pt-3 border-t border-border/30">
-                <button
-                  onClick={() => handleCancelOrder(order.id)}
-                  className="text-xs font-bold text-red-600 hover:underline"
-                >
-                  Cancel Order
-                </button>
-              </div>
-            )}
           </div>
         ))}
       </div>
-    )}
-  </div>
-);
+    </div>
+  );
+};
 
 const PlaceholderSection = ({ title, icon: Icon }: { title: string, icon: any }) => (
   <div className="text-center py-20">

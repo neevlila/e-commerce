@@ -41,6 +41,7 @@ const withTimeout = <T>(promise: any, ms: number = 2000): Promise<T> => {
 // ─── Local Storage Helpers ────────────────────────────────────────────────────
 // Used as a performance cache only — never as a source of truth for auth/limits.
 const STORAGE_KEY = 'stylehub-products-v1';
+const ORDERS_STORAGE_KEY = 'stylehub-orders-v1';
 
 const getLocalProducts = (): Product[] | null => {
   try {
@@ -513,11 +514,11 @@ export const api = {
   },
 
   orders: {
-    create: async (userId: string, items: any[], total: number): Promise<Order> => {
+    create: async (userId: string, items: any[], total: number, status: 'PENDING' | 'PAID' | 'CANCELLED' = 'PAID'): Promise<Order> => {
       try {
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
-          .insert([{ user_id: userId, total: total, status: 'PAID' }])
+          .insert([{ user_id: userId, total: total, status: status }])
           .select()
           .single();
 
@@ -544,17 +545,17 @@ export const api = {
           userId,
           items,
           total,
-          status: 'PAID',
+          status: status,
           createdAt: orderData.created_at,
         };
       } catch (e) {
-        // Fallback local order (for dev/demo only)
+        // Fallback local order (for dev/demo only — will NOT persist refresh)
         return {
           id: `local-order-${Date.now()}`,
           userId,
           items,
           total,
-          status: 'PAID',
+          status: status,
           createdAt: new Date().toISOString(),
         };
       }
@@ -569,17 +570,26 @@ export const api = {
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
         )) as any;
+
         if (error) throw error;
-        return data.map((order: any) => ({
+
+        return (data || []).map((order: any) => ({
           id: order.id,
           userId: order.user_id,
           total: Number(order.total),
           status: order.status,
           createdAt: order.created_at,
-          items: order.order_items.map((oi: any) => ({
-            ...mapProduct(oi.products),
-            quantity: oi.quantity,
-          })),
+          items: (order.order_items || [])
+            .map((oi: any) => ({
+              ...(oi.products ? mapProduct(oi.products) : { 
+                  id: oi.product_id, 
+                  name: 'Product details unavailable', 
+                  imageUrl: 'https://placehold.co/100x100?text=Product', 
+                  price: oi.price_at_purchase || 0,
+                  category: 'Unknown'
+              } as any),
+              quantity: oi.quantity,
+            })),
         }));
       } catch (e) {
         return [];
