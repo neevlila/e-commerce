@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef} from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronLeft, ChevronRight, Clock, ShieldCheck, Truck, RefreshCcw, Headphones } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -46,11 +46,11 @@ const BANNERS = [
 const CATEGORIES = [
   { name: 'Electronics', icon: '📱', link: '/products?category=Electronics' },
   { name: 'Fashion', icon: '👗', link: '/products?category=Clothes' },
-  { name: 'Home & Living', icon: '🛋️', link: '/products?category=Home & Living' },
+  { name: 'Home & Living', icon: '🛋️', link: '/products?category=Home+%26+Living' },
   { name: 'Sports', icon: '⚽', link: '/products?category=Sports' },
-  { name: 'Beauty', icon: '💄', link: '/products?category=Beauty' },
-  { name: 'Grocery', icon: '🛒', link: '/products' },
-  { name: 'Toys', icon: '🧸', link: '/products' },
+  { name: 'Beauty', icon: '💄', link: '/products?category=Skin+Care' },
+  { name: 'Shoes', icon: '👟', link: '/products?category=Shoes' },
+  { name: 'Jewellery', icon: '💍', link: '/products?category=Jewelry' },
   { name: 'View All', icon: '🔍', link: '/products' },
 ];
 

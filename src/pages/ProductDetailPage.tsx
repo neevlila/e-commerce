@@ -15,6 +15,15 @@ import { BookmarkIconButton } from '../components/ui/bookmark-icon-button';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// ── Stable discount seeded from product ID (stays in sync with HomePage) ──────
+function seededDiscount(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  }
+  return (hash % 31) + 20; // 20–50%, deterministic per product
+}
+
 // ─── Wishlist folder picker ───────────────────
 function WishlistPicker({
   productId,
@@ -328,9 +337,27 @@ export const ProductDetailPage = () => {
               </div>
             </div>
             
-            <div className="flex items-end gap-3 pt-4 border-t border-border/40">
-              <p className="text-5xl font-black text-foreground tracking-tight">{formatPrice(product.price)}</p>
-              <span className="text-sm text-muted-foreground mb-2">Inclusive of all taxes</span>
+            <div className="pt-4 border-t border-border/40">
+              {(() => {
+                const discount = seededDiscount(product.id);
+                const discountedPrice = Math.round(product.price * (1 - discount / 100));
+                return (
+                  <div className="flex flex-wrap items-end gap-3">
+                    <p className="text-5xl font-black text-foreground tracking-tight">
+                      {formatPrice(discountedPrice)}
+                    </p>
+                    <div className="flex items-end gap-2 mb-1.5">
+                      <span className="text-lg text-muted-foreground line-through">
+                        {formatPrice(product.price)}
+                      </span>
+                      <span className="text-sm font-black text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-md">
+                        {discount}% off
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+              <span className="text-xs text-muted-foreground mt-1 block">Inclusive of all taxes</span>
             </div>
 
             {requiresSize && (

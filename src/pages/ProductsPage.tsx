@@ -11,6 +11,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 type SortOption = 'most-popular' | 'top-rated' | 'latest' | 'price-low-high' | 'price-high-low';
 
+// ── Stable discount seeded from product ID (stays in sync with HomePage) ──────
+function seededDiscount(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  }
+  return (hash % 31) + 20; // 20–50%, deterministic per product
+}
+
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'latest', label: 'Latest' },
   { value: 'most-popular', label: 'Most Popular' },
@@ -371,7 +380,12 @@ export const ProductsPage = () => {
             // This means only the grid transitions animate, not every card re-rendering.
             <motion.div layout className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
               {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <div key={product.id} className="relative">
+                  <span className="absolute top-2 left-2 z-10 bg-[#2874f0] text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow pointer-events-none">
+                    {seededDiscount(product.id)}% off
+                  </span>
+                  <ProductCard product={product} />
+                </div>
               ))}
             </motion.div>
           )}
