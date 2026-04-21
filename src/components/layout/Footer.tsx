@@ -41,8 +41,9 @@ export const Footer = () => {
             </div>
           </div>
         </div>
-        <div className="mt-12 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} StyleHub. All rights reserved.
+        <div className="mt-12 pt-8 border-t border-border text-center flex flex-col items-center justify-center text-sm text-muted-foreground">
+          <p>© {new Date().getFullYear()} StyleHub. All rights reserved.</p>
+          <p className="mt-2">Made By :- Mahek Chavda, Drashti Bambharoliya, Preksha Thakkar, Ohm Chauhan, Archit Pithadiya, Neev Lila</p>
         </div>
       </div>
     </footer>
