@@ -63,19 +63,3 @@ src/
 ├── styles/         # Global styles and theme
 └── types/          # TypeScript type definitions
 ```
-
-## 🔄 Contributing
-
-Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-This project was generated through [Dualite](https://dualite.dev) – a modern development platform for building web applications.
-
----
-
-**Need help?** Check out our [documentation](https://dualite.dev/docs) or open an issue on GitHub.
