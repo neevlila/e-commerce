@@ -1,9 +1,81 @@
-# Project Setup
-    
-    To run this project, follow these steps:
-    
-    1. Extract the zip file.
-    2. Run `npm install` to install dependencies.
-    3. Run `npm run dev` to start the development server.
-    
-    This project was generated through Alpha. For more information, visit [dualite.dev](https://dualite.dev).
+# E-Commerce Platform
+
+A modern, scalable e-commerce solution built with cutting-edge web technologies.
+
+## 🚀 Features
+
+- **TypeScript-First Architecture** – Fully typed codebase for enhanced reliability and developer experience
+- **Modern Stack** – Built with industry-leading frameworks and tools
+- **Scalable Design** – Database-backed infrastructure for enterprise-grade applications
+- **Developer Friendly** – Streamlined setup and development workflow
+
+## 📋 Tech Stack
+
+| Technology | Percentage |
+|-----------|-----------|
+| TypeScript | 97.4% |
+| PLpgSQL | 1.1% |
+| Other | 1.5% |
+
+## ⚡ Quick Start
+
+Get up and running in just a few steps:
+
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn package manager
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/neevlila/e-commerce.git
+   cd e-commerce
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start development server**
+   ```bash
+   npm run dev
+   ```
+
+The development server will start and you can begin working immediately.
+
+## 📦 Available Scripts
+
+- `npm run dev` – Start the development server with hot reload
+- `npm run build` – Build the project for production
+- `npm test` – Run test suite
+- `npm run lint` – Run code linting
+
+## 🏗️ Project Structure
+
+```
+src/
+├── components/     # Reusable React components
+├── pages/          # Page components
+├── services/       # Business logic and API integration
+├── utils/          # Utility functions
+├── styles/         # Global styles and theme
+└── types/          # TypeScript type definitions
+```
+
+## 🔄 Contributing
+
+Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+This project was generated through [Dualite](https://dualite.dev) – a modern development platform for building web applications.
+
+---
+
+**Need help?** Check out our [documentation](https://dualite.dev/docs) or open an issue on GitHub.
